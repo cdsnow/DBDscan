@@ -22,10 +22,12 @@ def DummyAtom(x,y,z,aname='D',rname='DUM',rnum=1,anum=1,elem='D',atype='ATOM  ',
     else:
         return '%6s%5d  %-3s%1s%3s %1s%4d    %8.3f%8.3f%8.3f %5.2f %5.2f          %2s' % values
 
+_first_model_temps = []
+
 def first_model(pdb_path):
     """Return path to just the first MODEL of an NMR ensemble PDB.
     For non-ensemble files (no MODEL record before first ATOM), returns
-    the original path unchanged."""
+    the original path unchanged.  Temp files are cleaned up at exit."""
     with open(pdb_path) as f:
         for line in f:
             if line.startswith('ATOM'):
@@ -44,7 +46,17 @@ def first_model(pdb_path):
     tmp = tempfile.NamedTemporaryFile(suffix='.pdb', delete=False, mode='w')
     tmp.writelines(lines)
     tmp.close()
+    _first_model_temps.append(tmp.name)
     return tmp.name
+
+import atexit
+def _cleanup_first_model_temps():
+    for p in _first_model_temps:
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+atexit.register(_cleanup_first_model_temps)
 
 class PDB:
     """A PDB object stores the Protein Data Bank representation of a structure and parsed metadata.

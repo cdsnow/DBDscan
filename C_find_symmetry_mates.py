@@ -18,7 +18,7 @@ from numpy import matrix, array
 import itertools
 import sys
 
-sys.path.insert(0, 'pyscaffoldscan')
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pyscaffoldscan'))
 from pdbtools import PDB
 from sgdata import sgqt
 

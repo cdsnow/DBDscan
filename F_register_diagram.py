@@ -103,6 +103,10 @@ print(f"  {len(fwd)} fwd + {len(rev)} rev non-clashing registers")
 
 # ── Color mapping: min_dist -> cividis ────────────────────────────────
 # Largest min_dist -> blue (t=0), smallest -> yellow (t=1)
+if not registers:
+    print("  No non-clashing registers — skipping diagram.")
+    sys.exit(0)
+
 all_dists = [r['min_dist'] for r in registers]
 d_lo, d_hi = min(all_dists), max(all_dists)
 d_range = d_hi - d_lo if d_hi > d_lo else 1.0
