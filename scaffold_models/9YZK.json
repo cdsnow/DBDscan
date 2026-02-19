@@ -1,0 +1,26 @@
+{
+    "pdb_id": "9YZK",
+    "space_group": "I 1 2 1",
+    "unit_cell_edges": [75.836, 163.022, 192.278],
+    "unit_cell_angles": [90.0, 98.61, 90.0],
+    "chains": {
+        "E": {
+            "type": "DNA",
+            "resid_range": [1, 42],
+            "sequence": "AGTATCTTCCCACCTGTGACAAATTGCCCTCAGACCTCATCC"
+        },
+        "F": {
+            "type": "DNA",
+            "resid_range": [1, 42],
+            "sequence": "CTGGATGAGGTCTGAGGGCAATTTGTCACAGGTGGGAAGATA"
+        },
+        "C": {
+            "type": "protein",
+            "resid_range": [11, 247],
+            "num_residues": 224,
+            "gaps": [[51, 52], [98, 108]],
+            "sequence": "MRGSHHHHHHGSMAETAVINHKKRKNSPRIVQSNDLTEAAYSLSRDQKRMLYLFVDQIRKSDGTLQEHDGICEIHVAKYAEIFGLTSAEASKDIRQALKSFAGKEVVFYRPEEDAGDEKGYESFPWFIKPAHSPSRGLYSVHINPYLIPFFIGLQNRFTQFRLSETKEITNPYAMRLYESLCQYRKPDGSGIVSLKIDWIIERYQLPQSYQRMPDFRRRFLQVCVNEINSRTPMRLSYIEKKKGRQTTHIVFSFRDITSMTTG"
+        }
+    },
+    "dna_chains": ["E", "F"]
+}

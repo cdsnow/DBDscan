@@ -1,0 +1,20 @@
+# Generated outputs (regenerable via run_all.sh)
+output/
+processed_guest_models/
+symmetry_mates/
+
+# Unrelated website
+website/
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Example / manually edited SVGs
+example_register_diagram.svg
