@@ -57,7 +57,7 @@ Each scaffold has a PDB file and a JSON metadata file:
 | 1ysa | GCN4 bZIP | bZIP | 9 bp |
 | 1b8i | Ubx homeodomain (UBX-HD) | HTH | 6 bp |
 | 3hdd | Engrailed homeodomain (EnH-HD) | HTH | 6 bp |
-| 7dta | TCF/LEF C-clamp (+ Zn) | C-clamp | 5 bp |
+| 7dta | TCF/GEF HDBP1 C-clamp (+ Zn) | C-clamp | 5 bp |
 | 4xid | Antennapedia homeodomain (ANTP-HD) | HTH | 6 bp |
 
 ## Outputs
