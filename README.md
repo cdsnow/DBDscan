@@ -53,12 +53,12 @@ Each scaffold has a PDB file and a JSON metadata file:
 
 | Guest | Protein | DBD type | DNA window |
 |-------|---------|----------|------------|
-| 1jgg | Engrailed homeodomain | HTH | 7 bp |
-| 1ysa | EVE homeodomain | HTH | 7 bp |
-| 1b8i | EVE homeodomain (alt) | HTH | 7 bp |
-| 3hdd | Engrailed homeodomain (alt) | HTH | 7 bp |
-| 7dta | CREB bZIP | bZIP | 10 bp |
-| 4xid | GCN4 bZIP | bZIP | 10 bp |
+| 1jgg | EVE homeodomain (EVE-HD) | HTH | 7 bp |
+| 1ysa | GCN4 bZIP | bZIP | 9 bp |
+| 1b8i | Ubx homeodomain (UBX-HD) | HTH | 6 bp |
+| 3hdd | Engrailed homeodomain (EnH-HD) | HTH | 6 bp |
+| 7dta | TCF/LEF C-clamp (+ Zn) | C-clamp | 5 bp |
+| 4xid | Antennapedia homeodomain (ANTP-HD) | HTH | 6 bp |
 
 ## Outputs
 
