@@ -1500,6 +1500,7 @@ def step_E_rank(categorized_data, scaffold_pdb_str, scaffold_json,
             'neighbors': neighbors[:N_CLOSEST],
             'composite_top': composite_top,
             'composite_bot': composite_bot,
+            'footprint_overlaps': reg.get('footprint_overlaps', False),
         })
 
     # Deduplicate registers that wrap to the same position
@@ -1647,7 +1648,7 @@ def step_F_diagram_svg(ranked_data, scaffold_json, categories_data):
     SCALE_H = 4.5
     SCALE_GAP = 9.0
     PANEL_GAP = 18.0
-    SUPER_H = 6.0
+    SUPER_H = 15.0
     SUPER_GAP = 3.0
 
     BRACE_END_X = 14.25
@@ -1694,7 +1695,7 @@ def step_F_diagram_svg(ranked_data, scaffold_json, categories_data):
       f'fill: #aaa; text-anchor: middle; }}')
     a(f'  .scalelbl {{ font-family: Arial, sans-serif; font-size: {NUM_FONT}px; '
       f'fill: #aaa; }}')
-    a(f'  .superlbl {{ font-family: Arial, sans-serif; font-size: {LABEL_FONT + 0.3}px; '
+    a(f'  .superlbl {{ font-family: Arial, sans-serif; font-size: {(LABEL_FONT + 0.3) * 1.3:.1f}px; '
       f'text-anchor: middle; dominant-baseline: central; fill: #85c1e9; }}')
     a('  .register-bar:hover { opacity: 0.8; }')
     a('  .register-bar { cursor: pointer; }')
@@ -1785,7 +1786,9 @@ def step_F_diagram_svg(ranked_data, scaffold_json, categories_data):
             scx = sx + sw / 2
             scy = y_super + SUPER_H / 2
             a(f'<text class="superlbl" x="{scx:.2f}" y="{scy:.2f}">'
-              f'Scaffold Protein: {foot_start}\u2013{foot_end}</text>')
+              f'<tspan x="{scx:.2f}" dy="-0.5em">Scaffold Protein</tspan>'
+              f'<tspan x="{scx:.2f}" dy="1.1em">Register: {foot_start}\u2013{foot_end}</tspan>'
+              f'</text>')
 
         # Background column markers (every 5 bp)
         col_top = y_num - NUM_FONT

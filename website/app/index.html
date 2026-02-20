@@ -303,7 +303,7 @@ input[type="file"] { padding: 3px; }
 
 <!-- ═══ Stage 1: Load Guest Protein ═══════════════════════════════ -->
 <section class="stage" id="stage1">
-  <div class="stage-header">Stage 1: Load &amp; Configure Guest Protein</div>
+  <div class="stage-header">Stage 1: Load &amp; Truncate a Model of a DNA-Binding Domain</div>
   <div class="stage-body">
 
     <p style="font-size:0.85rem; color:gray; margin-bottom:0.8rem">
@@ -328,20 +328,28 @@ input[type="file"] { padding: 3px; }
     </div>
 
     <!-- Step 2: Selection form -->
-    <p style="font-size:0.85rem; color:gray; margin-bottom:0.5rem">
-      <strong>Step 2. Truncation.</strong> Use the fields below to truncate your input model so that it has
-      just one instance of your DNA binding domain and a minimal dsDNA segment it is bound to.
-      For the downstream scan, your minimal dsDNA needs to be simple contiguous canonical basepairs (no missing bases).
-      You can identify the chains and residue IDs by hovering over the model from Step 1.
-      Once you think you have your minimal model, try pressing <em>Preview Selection</em> to check.
-      Once your minimal model looks correct, proceed to Stage 2.
+    <p style="font-size:0.85rem; color:gray; margin-bottom:0.4rem">
+      <strong>Step 2. Pick the active protein chain(s).</strong> PDB entries often have multiple copies. For this next stage the goal is to trim away everything except one copy of your binding domain and a minimal length double stranded DNA (dsDNA). The first step is to pick just the one or two protein chains that constitute your binding domain. If you hover your mouse above a residue in the Mol* viewers it will tell you the chain and residue number.
     </p>
-    <h3>Chain &amp; Residue Selection</h3>
-    <div class="selection-row">
+
+    <div class="selection-row" style="margin-bottom:0.3rem">
       <div class="sel-group">
         <label>Protein chain(s):</label>
         <select id="sel-prot-chains" multiple size="2" style="width:100%"></select>
       </div>
+      <div class="sel-group" style="align-self:end">
+        <div class="checkbox-row">
+          <input type="checkbox" id="sel-hetatm">
+          <label for="sel-hetatm" style="display:inline; margin:0">Include HETATM</label>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size:0.85rem; color:gray; margin-top:0.8rem; margin-bottom:0.4rem">
+      <strong>Step 3. Truncate the DNA.</strong> The next step is to specify which DNA chains you want to retain for your minimal model. We provide a couple of ways to help you select a subset of the DNA residues. Often the easiest is to use the drag-and-drop selection.
+    </p>
+
+    <div class="selection-row" style="margin-bottom:0">
       <div class="sel-group">
         <label>DNA chain 1:</label>
         <select id="sel-dna1-chain"></select>
@@ -358,12 +366,6 @@ input[type="file"] { padding: 3px; }
           <div><label>hi:</label><input type="number" id="sel-dna2-hi"></div>
         </div>
       </div>
-      <div class="sel-group" style="align-self:end">
-        <div class="checkbox-row">
-          <input type="checkbox" id="sel-hetatm">
-          <label for="sel-hetatm" style="display:inline; margin:0">Include HETATM</label>
-        </div>
-      </div>
     </div>
 
     <div id="dna-selector-wrap" class="hidden" style="margin-top:0.5rem">
@@ -373,10 +375,22 @@ input[type="file"] { padding: 3px; }
       <div id="dna-selector" class="dna-selector"></div>
     </div>
 
-    <div style="margin-top:0.6rem; display:flex; gap:0.5rem; align-items:center">
+    <p style="font-size:0.85rem; color:gray; margin:0.4rem 0">
+      When picking DNA be careful of non-canonical bases or missing bases, the goal is to retain a simple contiguous dsDNA.
+    </p>
+
+    <p style="font-size:0.85rem; color:gray; margin-top:0.8rem; margin-bottom:0.4rem">
+      <strong>Step 4. Check your Work.</strong> Once you have a selection of chains and residues, you can inspect those by pressing the Preview Selection button and make revisions as necessary.
+    </p>
+
+    <div style="margin-top:0.3rem; display:flex; gap:0.5rem; align-items:center">
       <button class="btn btn-primary" id="btn-preview" onclick="previewSelection()" disabled>Preview Selection</button>
       <span class="status" id="status-selection"></span>
     </div>
+
+    <p style="font-size:0.85rem; color:gray; margin-bottom:0.4rem">
+      Once your preview model looks correct, a nice complex between your protein chain(s) and the minimal dsDNA, proceed to Stage 2 below.
+    </p>
 
     <!-- Viewer 2: Truncated Guest -->
     <div class="viewer-wrap" style="margin-top:0.8rem">
@@ -419,6 +433,9 @@ input[type="file"] { padding: 3px; }
 <section class="stage hidden" id="stage3">
   <div class="stage-header">Stage 3: Results</div>
   <div class="stage-body">
+    <div id="overlap-warning" class="hidden" style="background:#2a0015; border:2px solid #c71585; border-radius:6px; padding:8px 12px; margin-bottom:8px; color:#c71585; font-size:0.9rem; font-weight:bold; line-height:1.4">
+      WARNING: the currently selected and displayed register overlaps with the scaffold protein binding window. Depending on the extent of the overlap, sequence constraints may prevent simultaneous binding of the scaffold protein and the guest protein.
+    </div>
     <div class="row">
       <!-- Viewer 3 -->
       <div class="col">
@@ -1214,6 +1231,7 @@ function onPipelineComplete(result) {
     };
 
     // Show results stage
+    document.getElementById('overlap-warning').classList.add('hidden');
     document.getElementById('stage3').classList.remove('hidden');
     const scanBtn = document.getElementById('btn-scan');
     scanBtn.disabled = false;
@@ -1341,6 +1359,14 @@ function updateSummaryForRegister(reg) {
     html += '<div class="metric">Orientation: ' + reg.orientation + '</div>';
     html += '<div class="metric">Positions: ' + reg.start_pos + '\u2013' + reg.end_pos + '</div>';
     document.getElementById('results-summary').innerHTML = html;
+
+    // Show/hide overlap warning
+    const overlapWarn = document.getElementById('overlap-warning');
+    if (reg.footprint_overlaps) {
+        overlapWarn.classList.remove('hidden');
+    } else {
+        overlapWarn.classList.add('hidden');
+    }
 }
 
 // ── Chain ID remapping ──────────────────────────────────────────
