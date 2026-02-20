@@ -329,11 +329,12 @@ input[type="file"] { padding: 3px; }
 
     <!-- Step 2: Selection form -->
     <p style="font-size:0.85rem; color:gray; margin-bottom:0.5rem">
-      <strong>Step 2.</strong> Use the fields below to truncate your input model so that it has
+      <strong>Step 2. Truncation.</strong> Use the fields below to truncate your input model so that it has
       just one instance of your DNA binding domain and a minimal dsDNA segment it is bound to.
+      For the downstream scan, your minimal dsDNA needs to be simple contiguous canonical basepairs (no missing bases).
       You can identify the chains and residue IDs by hovering over the model from Step 1.
       Once you think you have your minimal model, try pressing <em>Preview Selection</em> to check.
-      Once your minimal model looks correct, proceed to Step 3.
+      Once your minimal model looks correct, proceed to Stage 2.
     </p>
     <h3>Chain &amp; Residue Selection</h3>
     <div class="selection-row">
@@ -445,7 +446,7 @@ input[type="file"] { padding: 3px; }
     </div>
 
     <p style="margin-top:10px; margin-bottom:6px">
-      <strong>Step 4.</strong> Try clicking on the different sliding window options below to see
+      You can click on the different sliding window options below to see
       the different guest DBD placements.
     </p>
     <h3>Register Diagram <span style="color:silver;font-size:0.75em">(click a bar to view in 3D)</span></h3>
@@ -1063,14 +1064,32 @@ function updateDnaSelection() {
     const topResCount = ch1All.filter(r => r >= topLo && r <= topHi).length;
     const botResCount = ch2All.filter(r => r >= botLo && r <= botHi).length;
 
+    // Detect gaps (missing residues within each range)
+    const topExpected = topHi - topLo + 1;
+    const botExpected = botHi - botLo + 1;
+    const topGaps = topExpected - topResCount;
+    const botGaps = botExpected - botResCount;
+
     const warnEl = document.getElementById('dna-sel-warning');
-    if (topResCount !== botResCount) {
-        warnEl.textContent = '\u26a0 Unequal strand lengths in range: '
-            + topResCount + ' vs ' + botResCount
-            + ' residues \u2014 adjust lo/hi manually to equalize';
-    } else {
-        warnEl.textContent = '';
+    const warnings = [];
+    if (topGaps > 0) {
+        const missing = [];
+        for (let r = topLo; r <= topHi; r++) {
+            if (!ch1All.includes(r)) missing.push(r);
+        }
+        warnings.push(`Chain ${ch1} missing residue(s) ${missing.join(', ')}`);
     }
+    if (botGaps > 0) {
+        const missing = [];
+        for (let r = botLo; r <= botHi; r++) {
+            if (!ch2All.includes(r)) missing.push(r);
+        }
+        warnings.push(`Chain ${ch2} missing residue(s) ${missing.join(', ')}`);
+    }
+    if (topResCount !== botResCount && topGaps === 0 && botGaps === 0) {
+        warnings.push(`Unequal strand lengths: ${topResCount} vs ${botResCount} residues`);
+    }
+    warnEl.textContent = warnings.length ? '\u26a0 ' + warnings.join('; ') : '';
 }
 
 function initDnaSelector() {
@@ -1100,6 +1119,8 @@ function initDnaSelector() {
 }
 
 // ── Start Scan ──────────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
 async function startScan() {
     const params = getSelectionParams();
     scaffoldCode = document.getElementById('scaffold-toggle').checked ? '9YZK' : '9YZJ';
@@ -1127,30 +1148,48 @@ async function startScan() {
         );
     }
 
-    // Run pipeline (synchronous — UI will freeze briefly)
-    updateProgress('Running', 0, 1, 'Running pipeline (this may take 10-30 seconds)...');
-    // Use setTimeout to allow the progress bar to render before blocking
-    setTimeout(() => {
-        try {
-            const sd = scaffoldData[scaffoldCode];
-            const resultJson = window.pyPipeline(
-                truncatedPdbStr,
-                JSON.stringify(sd.json),
-                sd.pdb,
-                JSON.stringify(sd.matesJson),
-                sd.botPdb,
-                sd.topPdb
-            );
-            const result = JSON.parse(resultJson);
-            onPipelineComplete(result);
-        } catch(e) {
-            setStatus('status-pipeline', `Pipeline error: ${e.message}`, 'error');
-            const scanBtn = document.getElementById('btn-scan');
-            scanBtn.disabled = false;
-            scanBtn.textContent = 'Scan Possible Binding Registers';
-            document.getElementById('progress-fill').classList.add('done');
-        }
-    }, 100);
+    try {
+        // Initialize pipeline data
+        updateProgress('Init', 5, 100, 'Preparing data...');
+        await sleep(50);
+        const sd = scaffoldData[scaffoldCode];
+        window.pyPipeInit(
+            truncatedPdbStr,
+            JSON.stringify(sd.json),
+            sd.pdb,
+            JSON.stringify(sd.matesJson),
+            sd.botPdb,
+            sd.topPdb
+        );
+
+        // Step B: Find registers
+        updateProgress('Registers', 10, 100, 'Finding binding registers...');
+        await sleep(50);
+        const nRegisters = parseInt(window.pyPipeStepB(), 10) || 0;
+
+        // Step D: Categorize
+        updateProgress('Categorize', 40, 100, `Categorizing ${nRegisters} registers...`);
+        await sleep(50);
+        window.pyPipeStepD();
+
+        // Step E: Rank
+        updateProgress('Rank', 65, 100, 'Ranking registers...');
+        await sleep(50);
+        window.pyPipeStepE();
+
+        // Step F: Diagram
+        updateProgress('Diagram', 85, 100, 'Generating diagram...');
+        await sleep(50);
+        const resultJson = window.pyPipeStepF();
+
+        const result = JSON.parse(resultJson);
+        onPipelineComplete(result);
+    } catch(e) {
+        setStatus('status-pipeline', `Pipeline error: ${e.message}`, 'error');
+        scanBtn.disabled = false;
+        scanBtn.textContent = 'Scan Possible Binding Registers';
+        document.getElementById('progress-fill').classList.add('done');
+    }
 }
 
 // ── Progress callback (called from Python) ──────────────────────
@@ -1294,6 +1333,7 @@ function updateSummaryForRegister(reg) {
 
     let html = '<div class="metric"><strong>' + nOk + '</strong> non-clashing registers</div>';
     html += '<div class="metric"><strong>' + nClash + '</strong> clashing registers</div>';
+    html += '<div class="metric" style="margin-top:0.5rem; color:gray; font-size:0.85em">To inspect the non-clashing registers see the table below.</div>';
     html += '<div class="metric" style="margin-top:0.5rem">Viewing: <strong>Rank ' + reg.rank + '</strong></div>';
     html += '<div class="metric">' + reg.obj_name + '</div>';
     html += '<div class="metric">min_dist: <strong>' + reg.min_dist.toFixed(1) + ' \u00c5</strong></div>';
@@ -1610,55 +1650,73 @@ def _call_step_a(pdb_string, prot_chains_json, dna1_chain, dna1_lo, dna1_hi,
         pdb_string, prot_chains, dna1_chain, int(dna1_lo), int(dna1_hi),
         dna2_chain, int(dna2_lo), int(dna2_hi), hetatm=bool(hetatm))
 
-def _call_pipeline(guest_pdb_str, scaffold_json_str, scaffold_pdb_str,
-                   mates_json_str, bot_pdb_str, top_pdb_str):
-    scaffold_json = json.loads(scaffold_json_str)
-    mates_json = json.loads(mates_json_str)
+_pipe = {}  # intermediate results between steps
 
-    # Step B: Find registers
-    b_result = pipeline.step_B_find_registers(
-        guest_pdb_str, scaffold_pdb_str, scaffold_json,
-        mates_json=mates_json, bot_pdb_str=bot_pdb_str, top_pdb_str=top_pdb_str)
+def _pipe_init(guest_pdb_str, scaffold_json_str, scaffold_pdb_str,
+               mates_json_str, bot_pdb_str, top_pdb_str):
+    _pipe['guest_pdb_str'] = guest_pdb_str
+    _pipe['scaffold_json'] = json.loads(scaffold_json_str)
+    _pipe['scaffold_pdb_str'] = scaffold_pdb_str
+    _pipe['mates_json'] = json.loads(mates_json_str)
+    _pipe['bot_pdb_str'] = bot_pdb_str
+    _pipe['top_pdb_str'] = top_pdb_str
+    return ''
 
-    # Step D: Categorize
-    d_result = pipeline.step_D_categorize(
-        b_result, scaffold_pdb_str, scaffold_json,
-        mates_json=mates_json)
+def _pipe_step_b():
+    _pipe['b_result'] = pipeline.step_B_find_registers(
+        _pipe['guest_pdb_str'], _pipe['scaffold_pdb_str'], _pipe['scaffold_json'],
+        mates_json=_pipe['mates_json'], bot_pdb_str=_pipe['bot_pdb_str'],
+        top_pdb_str=_pipe['top_pdb_str'])
+    n = len(_pipe['b_result'].get('registers', []))
+    return str(n)
 
-    # Step E: Rank
-    e_result = pipeline.step_E_rank(
-        d_result, scaffold_pdb_str, scaffold_json,
-        guest_pdb_str, mates_json=mates_json)
+def _pipe_step_d():
+    _pipe['d_result'] = pipeline.step_D_categorize(
+        _pipe['b_result'], _pipe['scaffold_pdb_str'], _pipe['scaffold_json'],
+        mates_json=_pipe['mates_json'])
+    return ''
 
-    # Step F: SVG diagram
-    svg = pipeline.step_F_diagram_svg(e_result, scaffold_json, d_result)
+def _pipe_step_e():
+    _pipe['e_result'] = pipeline.step_E_rank(
+        _pipe['d_result'], _pipe['scaffold_pdb_str'], _pipe['scaffold_json'],
+        _pipe['guest_pdb_str'], mates_json=_pipe['mates_json'])
+    return ''
 
-    register_pdbs = b_result.get('register_pdbs', {})
-    register_sym_pdbs = e_result.get('register_sym_pdbs', {})
-    ranked = e_result['ranked']
+def _pipe_step_f():
+    svg = pipeline.step_F_diagram_svg(_pipe['e_result'], _pipe['scaffold_json'],
+                                       _pipe['d_result'])
+    register_pdbs = _pipe['b_result'].get('register_pdbs', {})
+    register_sym_pdbs = _pipe['e_result'].get('register_sym_pdbs', {})
+    ranked = _pipe['e_result']['ranked']
     ranked_clean = []
     for r in ranked:
         rc = {k: v for k, v in r.items()
               if k not in ('pdb_string', 'neighbors', 'closest_dists')}
         ranked_clean.append(rc)
 
-    return json.dumps({
+    result = json.dumps({
         'ranked': ranked_clean,
         'register_pdbs': register_pdbs,
         'register_sym_pdbs': register_sym_pdbs,
         'svg': svg,
-        'scaff_top_seq': e_result.get('scaff_top_seq', ''),
-        'guest_seq1': e_result.get('guest_seq1', ''),
-        'guest_seq2': e_result.get('guest_seq2', ''),
-        'guest_dna_chains': e_result.get('guest_dna_chains', []),
-        'top_chain': e_result.get('top_chain', ''),
+        'scaff_top_seq': _pipe['e_result'].get('scaff_top_seq', ''),
+        'guest_seq1': _pipe['e_result'].get('guest_seq1', ''),
+        'guest_seq2': _pipe['e_result'].get('guest_seq2', ''),
+        'guest_dna_chains': _pipe['e_result'].get('guest_dna_chains', []),
+        'top_chain': _pipe['e_result'].get('top_chain', ''),
     })
+    _pipe.clear()
+    return result
 `);
 
     // Create JS-callable proxies
     window.pyValidate = pyodide.globals.get('_call_validate');
     window.pyStepA = pyodide.globals.get('_call_step_a');
-    window.pyPipeline = pyodide.globals.get('_call_pipeline');
+    window.pyPipeInit = pyodide.globals.get('_pipe_init');
+    window.pyPipeStepB = pyodide.globals.get('_pipe_step_b');
+    window.pyPipeStepD = pyodide.globals.get('_pipe_step_d');
+    window.pyPipeStepE = pyodide.globals.get('_pipe_step_e');
+    window.pyPipeStepF = pyodide.globals.get('_pipe_step_f');
 
     document.getElementById('loading-overlay').classList.add('hidden');
     console.log('Pyodide + pipeline ready');

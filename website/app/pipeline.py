@@ -803,6 +803,7 @@ def validate_guest_selection(pdb_string, protein_chains, dna1_chain, dna1_lo,
         if ch not in all_chains:
             return False, f"Protein chain '{ch}' not found. Available: {all_chains}", info
 
+    actual_counts = {}
     for label, ch, lo, hi in [('DNA1', dna1_chain, dna1_lo, dna1_hi),
                                ('DNA2', dna2_chain, dna2_lo, dna2_hi)]:
         if ch not in all_chains:
@@ -810,17 +811,23 @@ def validate_guest_selection(pdb_string, protein_chains, dna1_chain, dna1_lo,
         resids = sorted(P.resndict[ch].keys())
         if lo < min(resids) or hi > max(resids):
             return False, f"{label} range {lo}-{hi} out of bounds (chain {ch}: {min(resids)}-{max(resids)})", info
-        n_bp = hi - lo + 1
-        if n_bp < 3:
-            return False, f"{label} needs at least 3 base pairs, got {n_bp}", info
+        # Count actual residues present in the selected range
+        present = [r for r in resids if lo <= r <= hi]
+        expected = hi - lo + 1
+        if len(present) < expected:
+            missing = sorted(set(range(lo, hi + 1)) - set(present))
+            return False, (f"{label} chain {ch} range {lo}-{hi} has gaps: "
+                           f"missing residue(s) {', '.join(str(r) for r in missing)}. "
+                           f"Expected {expected} residues but only {len(present)} present."), info
+        if len(present) < 3:
+            return False, f"{label} needs at least 3 base pairs, got {len(present)}", info
+        actual_counts[label] = len(present)
 
-    n1 = dna1_hi - dna1_lo + 1
-    n2 = dna2_hi - dna2_lo + 1
-    if n1 != n2:
-        return False, f"DNA strand lengths differ: {n1} vs {n2}", info
+    if actual_counts['DNA1'] != actual_counts['DNA2']:
+        return False, f"DNA strand lengths differ: {actual_counts['DNA1']} vs {actual_counts['DNA2']}", info
 
-    info['window_size'] = n1
-    return True, f"Valid: {len(protein_chains)} protein chain(s), {n1}-bp DNA window", info
+    info['window_size'] = actual_counts['DNA1']
+    return True, f"Valid: {len(protein_chains)} protein chain(s), {actual_counts['DNA1']}-bp DNA window", info
 
 
 def step_A_process_guest(pdb_string, protein_chains, dna1_chain, dna1_lo,
