@@ -219,6 +219,28 @@ input[type="file"] { padding: 3px; }
 .sel-group { min-width: 120px; }
 .sel-group select { width: 100%; }
 
+/* ── dsDNA drag selector ─────────────────────────────── */
+.dna-selector { overflow-x: auto; margin: 8px 0; padding: 8px;
+  background: #fff; border: 1px solid #dcdcdc; border-radius: 6px; }
+.dna-selector-inner { display: inline-flex; flex-direction: column;
+  user-select: none; cursor: crosshair; }
+.dna-row { display: flex; align-items: center; white-space: nowrap; }
+.dna-label { font-size: 0.7em; color: gray; width: 55px; flex-shrink: 0;
+  text-align: right; padding-right: 4px; font-family: 'Courier New', monospace; }
+.dna-end { font-size: 0.65em; color: gray; padding: 0 3px; flex-shrink: 0; }
+.bp-cell { display: inline-block; width: 18px; text-align: center;
+  font-family: 'Courier New', monospace; font-size: 0.8em; font-weight: bold;
+  color: #555; padding: 1px 0; flex-shrink: 0; }
+.bp-pipe { display: inline-block; width: 18px; text-align: center;
+  font-size: 0.7em; color: #ccc; flex-shrink: 0; }
+.bp-cell.selected { background: yellowgreen; color: #000; border-radius: 2px; }
+.bp-cell:hover { background: #e8e8e8; border-radius: 2px; }
+.bp-cell.selected:hover { background: #9acd32; }
+.bp-resid { display: inline-block; width: 18px; text-align: center;
+  font-size: 0.55em; color: silver; flex-shrink: 0; overflow: visible; }
+.dna-sel-warning { color: indianred; font-weight: bold; }
+.dna-sel-label { font-size: 0.8em; color: gray; margin-bottom: 4px; }
+
 /* ── Scaffold toggle switch ──────────────────────────── */
 .scaffold-toggle { display: inline-block; }
 .toggle-checkbox { display: none; }
@@ -343,6 +365,13 @@ input[type="file"] { padding: 3px; }
       </div>
     </div>
 
+    <div id="dna-selector-wrap" class="hidden" style="margin-top:0.5rem">
+      <div class="dna-sel-label">dsDNA Base Pairing — <em>drag to select region</em>
+        (<strong><span id="dna-sel-count">0</span> bp</strong> selected)
+        <span id="dna-sel-warning" class="dna-sel-warning"></span></div>
+      <div id="dna-selector" class="dna-selector"></div>
+    </div>
+
     <div style="margin-top:0.6rem; display:flex; gap:0.5rem; align-items:center">
       <button class="btn btn-primary" id="btn-preview" onclick="previewSelection()" disabled>Preview Selection</button>
       <span class="status" id="status-selection"></span>
@@ -424,7 +453,7 @@ input[type="file"] { padding: 3px; }
     <p style="margin-top:8px; line-height:1.5">
       This diagram shows possible binding registers that might be sterically feasible, colored
       by how close they get to other biomolecules within the lattice (excluding their dsDNA stack).
-      The candidate registers with magenta boundaries overlap with the scaffold protein (RepE54)
+      The register with the green boundary is the currently selected model. The candidate registers with magenta boundaries overlap with the scaffold protein (RepE54)
       binding window which will presumably prevent freely changing the sequence in pursuit of
       guest installation.
     </p>
@@ -666,6 +695,7 @@ function populateSelectionForm(chainInfo) {
             document.getElementById('sel-dna1-lo').value = info.lo;
             document.getElementById('sel-dna1-hi').value = info.hi;
         }
+        initDnaSelector();
     };
     dna2Sel.onchange = function() {
         const info = chainInfo[this.value];
@@ -673,11 +703,38 @@ function populateSelectionForm(chainInfo) {
             document.getElementById('sel-dna2-lo').value = info.lo;
             document.getElementById('sel-dna2-hi').value = info.hi;
         }
+        initDnaSelector();
     };
+
+    // Initialize dsDNA drag selector
+    initDnaSelector();
+}
+
+// ── Normalize modified nucleotide bases ──────────────────────────
+// Promote HETATM → ATOM and rename to standard DNA residue names
+// so the pipeline correctly processes modified bases (e.g. OMC → DC).
+function normalizeModifiedBases(pdbText) {
+    const modToStd = {
+        OMC: 'DC', '5MC': 'DC', CBR: 'DC', '5CM': 'DC',
+        OMG: 'DG', '2MG': 'DG', '7MG': 'DG', M2G: 'DG',
+        OMA: 'DA', '1MA': 'DA', '6MA': 'DA', MA6: 'DA',
+        OMU: 'DT', '5MU': 'DT', '5BU': 'DT', BRU: 'DT', PSU: 'DT',
+    };
+    return pdbText.split('\n').map(line => {
+        if (line.length < 27) return line;
+        const isHetatm = line.startsWith('HETATM');
+        if (!line.startsWith('ATOM') && !isHetatm) return line;
+        const resn = line.substring(17, 20).trim();
+        if (!modToStd[resn]) return line;
+        const stdResn = modToStd[resn].padStart(3);
+        const prefix = isHetatm ? 'ATOM  ' : line.substring(0, 6);
+        return prefix + line.substring(6, 17) + stdResn + line.substring(20);
+    }).join('\n');
 }
 
 // ── After PDB is loaded ─────────────────────────────────────────
 function onPdbLoaded() {
+    guestPdbString = normalizeModifiedBases(guestPdbString);
     setStatus('status-selection', 'PDB loaded, parsing chains...', 'info');
     const chainInfo = parsePdbChains(guestPdbString);
     populateSelectionForm(chainInfo);
@@ -730,6 +787,316 @@ function getSelectionParams() {
         dna2Hi: parseInt(document.getElementById('sel-dna2-hi').value),
         hetatm: document.getElementById('sel-hetatm').checked,
     };
+}
+
+// ── dsDNA Base Pairing Detection & Drag Selector ────────────────
+let bpPairs = [];
+let selStart = 0, selEnd = 0;
+let bpDragging = false, dragAnchor = null;
+let dnaChainResids = {};  // chain -> sorted array of all resids on that chain
+
+function detectBasePairing(pdbText, chain1, chain2) {
+    // Parse C1' atoms and base identity for each residue on both chains
+    const WC = { A: 'T', T: 'A', G: 'C', C: 'G' };
+    const resNameToBase = {
+        DA: 'A', DT: 'T', DC: 'C', DG: 'G',           // standard DNA
+        A: 'A', T: 'T', C: 'C', G: 'G', U: 'T',       // standard RNA
+        OMC: 'C', '5MC': 'C', CBR: 'C', '5CM': 'C',    // modified C
+        OMG: 'G', '2MG': 'G', '7MG': 'G', M2G: 'G',    // modified G
+        OMA: 'A', '1MA': 'A', '6MA': 'A', MA6: 'A',    // modified A
+        OMU: 'T', '5MU': 'T', '5BU': 'T', BRU: 'T', PSU: 'T',  // modified T/U
+    };
+
+    function parseChainC1(text, chainId) {
+        const residues = {};  // resid -> {x, y, z, base}
+        for (const line of text.split('\n')) {
+            if (line.length < 54) continue;
+            if (!line.startsWith('ATOM') && !line.startsWith('HETATM')) continue;
+            if (line[21] !== chainId) continue;
+            const atomName = line.substring(12, 16).trim();
+            if (atomName !== "C1'") continue;
+            const resid = parseInt(line.substring(22, 26).trim());
+            const resn = line.substring(17, 20).trim();
+            const base = resNameToBase[resn];
+            if (!base) continue;
+            const x = parseFloat(line.substring(30, 38));
+            const y = parseFloat(line.substring(38, 46));
+            const z = parseFloat(line.substring(46, 54));
+            residues[resid] = { chain: chainId, resid, base, x, y, z };
+        }
+        return residues;
+    }
+
+    const ch1Res = parseChainC1(pdbText, chain1);
+    const ch2Res = parseChainC1(pdbText, chain2);
+
+    // Sort chain1 residues by resid ascending
+    const ch1Sorted = Object.values(ch1Res).sort((a, b) => a.resid - b.resid);
+    const ch2List = Object.values(ch2Res);
+    const used = new Set();
+
+    const pairs = [];
+    for (const r1 of ch1Sorted) {
+        let bestDist = Infinity, bestR2 = null;
+        for (const r2 of ch2List) {
+            if (used.has(r2.resid)) continue;
+            // Check Watson-Crick complementarity
+            if (WC[r1.base] !== r2.base) continue;
+            const dx = r1.x - r2.x, dy = r1.y - r2.y, dz = r1.z - r2.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestR2 = r2;
+            }
+        }
+        if (bestR2 && bestDist < 12) {
+            used.add(bestR2.resid);
+            pairs.push({
+                top: { chain: r1.chain, resid: r1.resid, base: r1.base },
+                bot: { chain: bestR2.chain, resid: bestR2.resid, base: bestR2.base },
+            });
+        }
+    }
+    return pairs;
+}
+
+// Parse all DNA resids for a chain from PDB text
+function parseDnaResids(pdbText, chainId) {
+    const resids = new Set();
+    for (const line of pdbText.split('\n')) {
+        if (line.length < 54) continue;
+        if (!line.startsWith('ATOM') && !line.startsWith('HETATM')) continue;
+        if (line[21] !== chainId) continue;
+        resids.add(parseInt(line.substring(22, 26).trim()));
+    }
+    return Array.from(resids).sort((a, b) => a - b);
+}
+
+function buildDnaSelector(pairs) {
+    const container = document.getElementById('dna-selector');
+    container.innerHTML = '';
+    if (!pairs.length) return;
+
+    const inner = document.createElement('div');
+    inner.className = 'dna-selector-inner';
+
+    const topChain = pairs[0].top.chain;
+    const botChain = pairs[0].bot.chain;
+
+    function makeSpan(cls, text) {
+        const s = document.createElement('span');
+        s.className = cls;
+        s.textContent = text;
+        return s;
+    }
+
+    // Invisible spacer matching the width of a dna-end element
+    function makeEndSpacer(matchText) {
+        const s = makeSpan('dna-end', matchText);
+        s.style.visibility = 'hidden';
+        return s;
+    }
+
+    // Which positions get resid markers: first, last, every 5th
+    function shouldShowResid(i) {
+        return i === 0 || i === pairs.length - 1 || (i + 1) % 5 === 0;
+    }
+
+    // ── Top resid row (actual PDB resids for top strand) ──
+    const topResidRow = document.createElement('div');
+    topResidRow.className = 'dna-row';
+    topResidRow.appendChild(makeSpan('dna-label', ''));
+    topResidRow.appendChild(makeEndSpacer("5\u2032\u2500"));
+    for (let i = 0; i < pairs.length; i++) {
+        topResidRow.appendChild(makeSpan('bp-resid',
+            shouldShowResid(i) ? String(pairs[i].top.resid) : ''));
+    }
+    topResidRow.appendChild(makeEndSpacer("\u2500\u20323\u2032"));
+    inner.appendChild(topResidRow);
+
+    // ── Top base row ──
+    const topRow = document.createElement('div');
+    topRow.className = 'dna-row';
+    topRow.appendChild(makeSpan('dna-label', 'chain ' + topChain));
+    topRow.appendChild(makeSpan('dna-end', "5\u2032\u2500"));
+    for (let i = 0; i < pairs.length; i++) {
+        const cell = document.createElement('span');
+        cell.className = 'bp-cell selected';
+        cell.dataset.idx = i;
+        cell.dataset.row = 'top';
+        cell.textContent = pairs[i].top.base;
+        cell.title = topChain + ':' + pairs[i].top.resid + ' ' + pairs[i].top.base;
+        topRow.appendChild(cell);
+    }
+    topRow.appendChild(makeSpan('dna-end', "\u2500\u20323\u2032"));
+    inner.appendChild(topRow);
+
+    // ── Pipe row ──
+    const pipeRow = document.createElement('div');
+    pipeRow.className = 'dna-row';
+    pipeRow.appendChild(makeSpan('dna-label', ''));
+    pipeRow.appendChild(makeEndSpacer("5\u2032\u2500"));
+    for (let i = 0; i < pairs.length; i++) {
+        pipeRow.appendChild(makeSpan('bp-pipe', '|'));
+    }
+    pipeRow.appendChild(makeEndSpacer("\u2500\u20323\u2032"));
+    inner.appendChild(pipeRow);
+
+    // ── Bottom base row ──
+    const botRow = document.createElement('div');
+    botRow.className = 'dna-row';
+    botRow.appendChild(makeSpan('dna-label', 'chain ' + botChain));
+    botRow.appendChild(makeSpan('dna-end', "3\u2032\u2500"));
+    for (let i = 0; i < pairs.length; i++) {
+        const cell = document.createElement('span');
+        cell.className = 'bp-cell selected';
+        cell.dataset.idx = i;
+        cell.dataset.row = 'bot';
+        cell.textContent = pairs[i].bot.base;
+        cell.title = botChain + ':' + pairs[i].bot.resid + ' ' + pairs[i].bot.base;
+        botRow.appendChild(cell);
+    }
+    botRow.appendChild(makeSpan('dna-end', "\u2500\u20325\u2032"));
+    inner.appendChild(botRow);
+
+    // ── Bottom resid row (actual PDB resids for bottom strand) ──
+    const botResidRow = document.createElement('div');
+    botResidRow.className = 'dna-row';
+    botResidRow.appendChild(makeSpan('dna-label', ''));
+    botResidRow.appendChild(makeEndSpacer("3\u2032\u2500"));
+    for (let i = 0; i < pairs.length; i++) {
+        botResidRow.appendChild(makeSpan('bp-resid',
+            shouldShowResid(i) ? String(pairs[i].bot.resid) : ''));
+    }
+    botResidRow.appendChild(makeEndSpacer("\u2500\u20325\u2032"));
+    inner.appendChild(botResidRow);
+
+    container.appendChild(inner);
+
+    // -- Drag selection events --
+    inner.addEventListener('mousedown', function(e) {
+        const cell = e.target.closest('.bp-cell');
+        if (!cell) return;
+        e.preventDefault();
+        dragAnchor = parseInt(cell.dataset.idx);
+        bpDragging = true;
+        selStart = selEnd = dragAnchor;
+        updateDnaSelection();
+    });
+
+    inner.addEventListener('mousemove', function(e) {
+        if (!bpDragging) return;
+        const cell = e.target.closest('.bp-cell');
+        if (!cell) return;
+        const idx = parseInt(cell.dataset.idx);
+        selStart = Math.min(dragAnchor, idx);
+        selEnd = Math.max(dragAnchor, idx);
+        updateDnaSelection();
+    });
+
+    document.addEventListener('mouseup', function() {
+        bpDragging = false;
+    });
+
+    // Touch events for mobile
+    inner.addEventListener('touchstart', function(e) {
+        const cell = e.target.closest('.bp-cell');
+        if (!cell) return;
+        e.preventDefault();
+        dragAnchor = parseInt(cell.dataset.idx);
+        bpDragging = true;
+        selStart = selEnd = dragAnchor;
+        updateDnaSelection();
+    }, { passive: false });
+
+    inner.addEventListener('touchmove', function(e) {
+        if (!bpDragging) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const cell = el && el.closest ? el.closest('.bp-cell') : null;
+        if (!cell) return;
+        const idx = parseInt(cell.dataset.idx);
+        selStart = Math.min(dragAnchor, idx);
+        selEnd = Math.max(dragAnchor, idx);
+        updateDnaSelection();
+    }, { passive: false });
+
+    document.addEventListener('touchend', function() {
+        bpDragging = false;
+    });
+}
+
+function updateDnaSelection() {
+    // Toggle .selected class on all .bp-cell elements
+    document.querySelectorAll('#dna-selector .bp-cell').forEach(cell => {
+        const idx = parseInt(cell.dataset.idx);
+        cell.classList.toggle('selected', idx >= selStart && idx <= selEnd);
+    });
+
+    const count = selEnd - selStart + 1;
+    document.getElementById('dna-sel-count').textContent = count;
+
+    if (bpPairs.length === 0) return;
+
+    // Compute lo/hi from ALL selected pairs (not just endpoints,
+    // in case bottom-strand resids aren't perfectly monotonic)
+    let topLo = Infinity, topHi = -Infinity;
+    let botLo = Infinity, botHi = -Infinity;
+    for (let i = selStart; i <= selEnd; i++) {
+        const tr = bpPairs[i].top.resid, br = bpPairs[i].bot.resid;
+        if (tr < topLo) topLo = tr;
+        if (tr > topHi) topHi = tr;
+        if (br < botLo) botLo = br;
+        if (br > botHi) botHi = br;
+    }
+    document.getElementById('sel-dna1-lo').value = topLo;
+    document.getElementById('sel-dna1-hi').value = topHi;
+    document.getElementById('sel-dna2-lo').value = botLo;
+    document.getElementById('sel-dna2-hi').value = botHi;
+
+    // Count actual residues in each lo/hi range to detect mismatches
+    const ch1 = bpPairs[0].top.chain;
+    const ch2 = bpPairs[0].bot.chain;
+    const ch1All = dnaChainResids[ch1] || [];
+    const ch2All = dnaChainResids[ch2] || [];
+    const topResCount = ch1All.filter(r => r >= topLo && r <= topHi).length;
+    const botResCount = ch2All.filter(r => r >= botLo && r <= botHi).length;
+
+    const warnEl = document.getElementById('dna-sel-warning');
+    if (topResCount !== botResCount) {
+        warnEl.textContent = '\u26a0 Unequal strand lengths in range: '
+            + topResCount + ' vs ' + botResCount
+            + ' residues \u2014 adjust lo/hi manually to equalize';
+    } else {
+        warnEl.textContent = '';
+    }
+}
+
+function initDnaSelector() {
+    const ch1 = document.getElementById('sel-dna1-chain').value;
+    const ch2 = document.getElementById('sel-dna2-chain').value;
+    if (!ch1 || !ch2 || !guestPdbString) {
+        document.getElementById('dna-selector-wrap').classList.add('hidden');
+        return;
+    }
+
+    // Store full resid sets for strand-length validation
+    dnaChainResids[ch1] = parseDnaResids(guestPdbString, ch1);
+    dnaChainResids[ch2] = parseDnaResids(guestPdbString, ch2);
+
+    const pairs = detectBasePairing(guestPdbString, ch1, ch2);
+    if (pairs.length < 2) {
+        document.getElementById('dna-selector-wrap').classList.add('hidden');
+        bpPairs = [];
+        return;
+    }
+    bpPairs = pairs;
+    selStart = 0;
+    selEnd = pairs.length - 1;
+    buildDnaSelector(pairs);
+    document.getElementById('dna-selector-wrap').classList.remove('hidden');
+    updateDnaSelection();
 }
 
 // ── Start Scan ──────────────────────────────────────────────────
