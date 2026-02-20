@@ -1406,6 +1406,7 @@ def step_E_rank(categorized_data, scaffold_pdb_str, scaffold_json,
     scaff_top_seq = scaff['chains'][top_chain]['sequence']
 
     ranked = []
+    register_sym_pdbs = {}
     for i, reg in enumerate(registers):
         if progress_cb:
             progress_cb('Ranking registers', i + 1, len(registers))
@@ -1423,6 +1424,28 @@ def step_E_rank(categorized_data, scaffold_pdb_str, scaffold_json,
             scaff_dna_info=scaff_dna_info)
         score = _compute_score(neighbors)
 
+        # Find closest guest symmetry copy
+        guest_tree = cKDTree(guest_prot_coords)
+        best_sym_dist = 999.0
+        best_sym_R = None
+        best_sym_T = None
+        for copy in env_copies:
+            R_c, T_c = copy['R'], copy['T']
+            sym_coords = (guest_prot_coords @ R_c.T) + T_c
+            d, _ = guest_tree.query(sym_coords, k=1)
+            d_min = float(d.min())
+            if d_min < best_sym_dist:
+                best_sym_dist = d_min
+                best_sym_R = R_c
+                best_sym_T = T_c
+        if best_sym_R is not None:
+            sym_guest = PDB(reg['pdb_string'])
+            sym_guest.Rotate(best_sym_R.T)
+            sym_guest.Translate(best_sym_T)
+            # Remap chain IDs to avoid clashes with scaffold + guest
+            _remap_sym_chains(sym_guest, scaffold, reg['pdb_string'])
+            register_sym_pdbs[reg['obj_name']] = str(sym_guest)
+
         has_clash = score['has_clash']
         n_interact = score['n_interact']
         min_dist = score['min_dist']
@@ -1439,10 +1462,10 @@ def step_E_rank(categorized_data, scaffold_pdb_str, scaffold_json,
         sp = reg['start_pos']
         overwrite_seq = guest_seq1 if reg['orientation'] == 'fwd' else guest_seq2
         top = list(scaff_top_seq)
+        n = len(top)
         for k in range(len(overwrite_seq)):
-            idx = sp + k - 1
-            if 0 <= idx < len(top):
-                top[idx] = overwrite_seq[k].lower()
+            idx = (sp + k - 1) % n
+            top[idx] = overwrite_seq[k].lower()
         composite_top = ''.join(top)
         composite_bot = ''.join(
             WC[b.upper()].lower() if b.islower() else WC[b] for b in top)
@@ -1472,6 +1495,25 @@ def step_E_rank(categorized_data, scaffold_pdb_str, scaffold_json,
             'composite_bot': composite_bot,
         })
 
+    # Deduplicate registers that wrap to the same position
+    # (e.g. pos=-1 and pos=30 on a 31bp scaffold are identical)
+    N_bp = len(scaff_top_seq)
+    seen = {}
+    deduped = []
+    for r in ranked:
+        key = (r['start_pos'] % N_bp, r['orientation'])
+        if key in seen:
+            prev = seen[key]
+            # Keep the one with larger min_dist (better score)
+            if r['min_dist'] > prev['min_dist']:
+                deduped.remove(prev)
+                seen[key] = r
+                deduped.append(r)
+        else:
+            seen[key] = r
+            deduped.append(r)
+    ranked = deduped
+
     # Sort: non-clashers first, then by min_dist DESC
     ranked.sort(key=lambda r: (r['has_clash'], -r['min_dist'], -r['total_score']))
 
@@ -1480,12 +1522,42 @@ def step_E_rank(categorized_data, scaffold_pdb_str, scaffold_json,
 
     return {
         'ranked': ranked,
+        'register_sym_pdbs': register_sym_pdbs,
         'top_chain': top_chain,
         'scaff_top_seq': scaff_top_seq,
         'guest_dna_chains': [gch1, gch2],
         'guest_seq1': guest_seq1,
         'guest_seq2': guest_seq2,
     }
+
+
+def _remap_sym_chains(sym_pdb, scaffold, guest_pdb_str):
+    """Remap chain IDs in sym_pdb to avoid clashes with scaffold and guest."""
+    # Collect used chain IDs
+    used = set()
+    for d in scaffold.listdict:
+        used.add(d['chain'])
+    guest = PDB(guest_pdb_str)
+    for d in guest.listdict:
+        used.add(d['chain'])
+    # Find chains in sym copy
+    sym_chains = set(d['chain'] for d in sym_pdb.listdict)
+    clashing = sym_chains & used
+    if not clashing:
+        return
+    candidates = 'YXZWVUTSRQPONMLKJIHGFDCBAyxzwvutsrqponmlkjihgfdcba0123456789'
+    all_used = used | sym_chains
+    # Build full mapping: identity for non-clashing, remap for clashing
+    mapping = {ch: ch for ch in sym_chains}
+    ci = 0
+    for ch in sorted(clashing):
+        while ci < len(candidates) and candidates[ci] in all_used:
+            ci += 1
+        if ci < len(candidates):
+            mapping[ch] = candidates[ci]
+            all_used.add(candidates[ci])
+            ci += 1
+    sym_pdb.SetChain(mapping)
 
 
 def step_F_diagram_svg(ranked_data, scaffold_json, categories_data):

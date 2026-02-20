@@ -596,6 +596,25 @@ if have_mates:
     if n_dropped:
         print(f"  Removed {n_dropped} redundant junction-equivalent registers")
 
+# ── Deduplicate wrapped registers ─────────────────────────────────────
+# Registers that wrap around the scaffold (e.g. pos=-1 and pos=30 on 31bp)
+# are the same physical placement. Keep the one with larger min_dist.
+N_bp = len(scaff_top_seq)
+seen = {}
+deduped = []
+for r in ranked:
+    key = (r['start_pos'] % N_bp, r['orientation'])
+    if key in seen:
+        prev = seen[key]
+        if r['min_dist'] > prev['min_dist']:
+            deduped.remove(prev)
+            seen[key] = r
+            deduped.append(r)
+    else:
+        seen[key] = r
+        deduped.append(r)
+ranked = deduped
+
 # ── Rank ──────────────────────────────────────────────────────────────
 # Sort: non-clashers first, then by min_dist DESC (farthest from closest
 # neighbor = best), with total_score DESC as tiebreaker.
@@ -865,10 +884,10 @@ for r in ranked:
     sp = r['start_pos']
     overwrite_seq = fwd_top_seq if r['orientation'] == 'fwd' else rev_top_seq
     top = list(scaff_top_seq)
+    n = len(top)
     for k in range(len(overwrite_seq)):
-        idx = sp + k - 1  # 0-indexed
-        if 0 <= idx < len(top):
-            top[idx] = overwrite_seq[k].lower()
+        idx = (sp + k - 1) % n  # wrap around
+        top[idx] = overwrite_seq[k].lower()
     r['composite_top'] = ''.join(top)
     r['composite_bot'] = ''.join(
         WC[b.upper()].lower() if b.islower() else WC[b] for b in top)

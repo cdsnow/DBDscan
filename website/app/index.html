@@ -16,110 +16,119 @@
 /* ── Reset & Base ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --bg: #1a1a2e;
-  --bg-card: #16213e;
-  --bg-input: #0f3460;
-  --text: #e0e0e0;
-  --text-dim: #8899aa;
-  --accent: #00d4ff;
-  --accent-dim: #0077aa;
-  --success: #00e676;
-  --warning: #ffab40;
-  --error: #ff5252;
-  --border: #2a3a5e;
-}
-
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  font-family: Verdana, Helvetica, Arial, sans-serif;
+  background: #fff;
+  color: dimgrey;
+  font-size: 0.8em;
   line-height: 1.5;
   min-height: 100vh;
 }
 
-h1 { font-size: 1.5rem; font-weight: 600; color: var(--accent); }
-h2 { font-size: 1.15rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
-h3 { font-size: 0.95rem; font-weight: 500; color: var(--text-dim); margin-bottom: 0.4rem; }
+h1 {
+  font-family: times, 'Times New Roman', georgia, serif;
+  color: #444; font-size: 31px; line-height: 34px;
+  letter-spacing: -1px; font-weight: bold;
+  margin: 0; padding: 0 0 6px 0;
+}
+h2 {
+  font-family: 'Gill Sans', Verdana, sans-serif;
+  font-size: 11px; line-height: 14px;
+  text-transform: uppercase; letter-spacing: 2px; font-weight: bold;
+  color: #444; margin-bottom: 0.5rem;
+}
+h3 {
+  font-family: 'Gill Sans', Verdana, sans-serif;
+  color: gray; font-size: 18px; font-weight: lighter;
+  line-height: 22px; letter-spacing: -0.5px;
+  margin: 0 0 0.4rem 0;
+}
+
+/* ── Page wrapper ────────────────────────────────────── */
+.page-wrap { max-width: 745px; margin: 0 auto; padding: 0 12px; }
 
 .app-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 1rem;
+  padding: 14px 0 8px 0;
+  border-bottom: 2px solid papayawhip;
+  display: flex; align-items: baseline; gap: 12px;
 }
-.app-header .subtitle { color: var(--text-dim); font-size: 0.85rem; }
+.app-header .subtitle {
+  font-family: 'Gill Sans', Verdana, sans-serif;
+  color: silver; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 2px; font-weight: bold;
+}
 
-/* ── Cards / Stages ───────────────────────────────────── */
+.app-intro {
+  padding: 8px 0 10px 0;
+  color: dimgrey; font-size: 0.95em;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 10px;
+}
+
+/* ── Inset panels (stages) ───────────────────────────── */
 .stage {
-  margin: 1rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  margin: 10px 0;
+  background: #f7f7f7;
+  border: 1px solid #dcdcdc;
+  border-radius: 10px;
   overflow: hidden;
 }
 .stage-header {
-  padding: 0.6rem 1rem;
-  background: rgba(0,212,255,0.06);
-  border-bottom: 1px solid var(--border);
-  font-weight: 600;
-  font-size: 0.9rem;
+  padding: 8px 12px;
+  background: yellowgreen;
+  border-bottom: 1px solid #9ab834;
+  font-family: 'Gill Sans', Verdana, sans-serif;
+  font-size: 11px; text-transform: uppercase;
+  letter-spacing: 2px; font-weight: bold;
+  color: #000;
 }
-.stage-body { padding: 1rem; }
+.stage-body { padding: 12px; }
 
 /* ── Form elements ────────────────────────────────────── */
-label { font-size: 0.82rem; color: var(--text-dim); display: block; margin-bottom: 0.2rem; }
+label { font-size: 0.9em; color: gray; display: block; margin-bottom: 2px; }
 select, input[type="text"], input[type="number"], input[type="file"] {
-  background: var(--bg-input); color: var(--text);
-  border: 1px solid var(--border); border-radius: 4px;
-  padding: 0.35rem 0.5rem; font-size: 0.85rem;
+  background: #fff; color: #444;
+  border: 1px solid #ccc; border-radius: 4px;
+  padding: 4px 6px; font-size: 0.95em;
   width: 100%;
 }
-select:focus, input:focus { outline: none; border-color: var(--accent); }
+select:focus, input:focus { outline: none; border-color: #999; box-shadow: 0 0 0 2px rgba(153,153,153,0.15); }
 input[type="number"] { width: 5rem; }
-input[type="file"] { padding: 0.25rem; }
+input[type="file"] { padding: 3px; }
 
 .btn {
-  background: var(--accent-dim); color: #fff;
-  border: none; border-radius: 4px;
-  padding: 0.45rem 1rem; font-size: 0.85rem;
-  cursor: pointer; font-weight: 500;
+  background: #888; color: #fff;
+  border: none; border-radius: 6px;
+  padding: 6px 14px; font-size: 0.95em;
+  cursor: pointer; font-weight: bold;
+  font-family: 'Gill Sans', Verdana, sans-serif;
   transition: background 0.15s;
 }
-.btn:hover { background: var(--accent); color: #000; }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-primary { background: #0a8754; }
-.btn-primary:hover { background: var(--success); color: #000; }
+.btn:hover { background: #666; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-primary { background: yellowgreen; color: #000; }
+.btn-primary:hover { background: yellowgreen; color: #000; box-shadow: 0 0 0 3px #333; }
 
 .checkbox-row { display: flex; align-items: center; gap: 0.4rem; margin: 0.3rem 0; }
 .checkbox-row input[type="checkbox"] { width: auto; }
 
 /* ── Layout ───────────────────────────────────────────── */
-.row { display: flex; gap: 1rem; flex-wrap: wrap; }
-.col { flex: 1; min-width: 280px; }
-
-.form-grid {
-  display: grid;
-  grid-template-columns: auto 1fr auto 1fr;
-  gap: 0.4rem 0.6rem;
-  align-items: center;
-}
-.form-grid label { margin-bottom: 0; }
-.form-grid .span-full { grid-column: 1 / -1; }
-.form-grid .span-3 { grid-column: span 3; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.col { flex: 1; min-width: 260px; }
 
 /* ── Mol* viewer containers ───────────────────────────── */
 .viewer-wrap {
   background: #000;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
   overflow: hidden;
   position: relative;
 }
 .viewer-wrap .viewer-label {
   position: absolute; top: 4px; left: 8px;
-  font-size: 0.7rem; color: var(--text-dim);
+  font-size: 0.75em; color: #ccc;
   z-index: 10; pointer-events: none;
-  background: rgba(0,0,0,0.5); padding: 1px 6px; border-radius: 3px;
+  background: rgba(0,0,0,0.55); padding: 1px 6px; border-radius: 3px;
 }
 .molstar-container { width: 100%; height: 400px; }
 
@@ -128,30 +137,25 @@ input[type="file"] { padding: 0.25rem; }
   display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;
   margin-bottom: 0.8rem;
 }
-.pdb-input-row .or-text {
-  color: var(--text-dim); font-size: 0.8rem; padding-bottom: 0.35rem;
-}
+.pdb-input-row .or-text { color: gray; font-size: 0.9em; padding-bottom: 4px; }
 
 /* ── Progress bar ─────────────────────────────────────── */
-.progress-wrap { margin: 0.5rem 0; }
+.progress-wrap { margin: 6px 0; }
 .progress-bar-bg {
-  background: #0f1a3a; border-radius: 6px;
+  background: #e8e8e8; border-radius: 6px;
   height: 24px; overflow: hidden; position: relative;
 }
 .progress-bar-fill {
-  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  background: linear-gradient(90deg, darkseagreen, yellowgreen);
   height: 100%; border-radius: 6px;
   transition: width 0.2s ease;
   background-size: 30px 30px;
   background-image: repeating-linear-gradient(
     45deg, transparent, transparent 10px,
-    rgba(255,255,255,0.08) 10px, rgba(255,255,255,0.08) 20px);
+    rgba(255,255,255,0.18) 10px, rgba(255,255,255,0.18) 20px);
   animation: stripe 0.8s linear infinite;
 }
-.progress-bar-fill.done {
-  animation: none;
-  background-image: none;
-}
+.progress-bar-fill.done { animation: none; background-image: none; }
 @keyframes stripe {
   0% { background-position: 0 0; }
   100% { background-position: 30px 0; }
@@ -159,53 +163,97 @@ input[type="file"] { padding: 0.25rem; }
 .progress-text {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.78rem; font-weight: 500; color: #fff;
+  font-size: 0.85em; font-weight: bold; color: #555;
   pointer-events: none;
 }
 
 /* ── Status messages ──────────────────────────────────── */
-.status { font-size: 0.82rem; margin: 0.4rem 0; min-height: 1.2em; }
-.status.ok { color: var(--success); }
-.status.error { color: var(--error); }
-.status.info { color: var(--accent); }
+.status { font-size: 0.9em; margin: 4px 0; min-height: 1.2em; }
+.status.ok { color: seagreen; }
+.status.error { color: indianred; }
+.status.info { color: steelblue; }
 
 /* ── Results summary ──────────────────────────────────── */
 .summary-box {
-  background: rgba(0,212,255,0.05);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.8rem;
-  font-size: 0.85rem;
+  background: #fff;
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.95em;
 }
-.summary-box .metric { margin: 0.2rem 0; }
-.summary-box .metric strong { color: var(--accent); }
+.summary-box .metric { margin: 2px 0; }
+.summary-box .metric strong { color: #444; }
 
 /* ── SVG diagram container ────────────────────────────── */
 #svg-container {
   overflow-x: auto;
   background: #111;
-  border-radius: 6px;
-  padding: 0.5rem;
-  margin-top: 0.8rem;
+  border-radius: 8px;
+  padding: 8px;
+  margin-top: 8px;
 }
 #svg-container svg { display: block; max-width: 100%; height: auto; }
 
 /* ── Loading overlay ──────────────────────────────────── */
 #loading-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(26,26,46,0.92);
+  background: rgba(255,255,255,0.92);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   z-index: 1000;
 }
 #loading-overlay .spinner {
   width: 40px; height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
+  border: 3px solid #ddd;
+  border-top-color: darkseagreen;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-#loading-overlay .msg { margin-top: 1rem; color: var(--text-dim); font-size: 0.9rem; }
+#loading-overlay .msg { margin-top: 1rem; color: gray; font-size: 0.95em; }
+
+/* ── Selection row (horizontal form layout) ──────────── */
+.selection-row {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start;
+  margin-bottom: 4px;
+}
+.sel-group { min-width: 120px; }
+.sel-group select { width: 100%; }
+
+/* ── Scaffold toggle switch ──────────────────────────── */
+.scaffold-toggle { display: inline-block; }
+.toggle-checkbox { display: none; }
+.toggle-label {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; user-select: none;
+  font-size: 1em; font-weight: bold;
+  font-family: 'Gill Sans', Verdana, sans-serif;
+}
+.toggle-opt { transition: color 0.2s; }
+.toggle-opt small { font-weight: normal; color: gray; }
+.toggle-left { color: #444; }
+.toggle-right { color: silver; }
+.toggle-checkbox:checked ~ .toggle-label .toggle-left { color: silver; }
+.toggle-checkbox:checked ~ .toggle-label .toggle-right { color: #444; }
+
+.toggle-switch {
+  position: relative;
+  width: 52px; height: 28px;
+  background: darkseagreen;
+  border-radius: 14px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 22px; height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-checkbox:checked ~ .toggle-label .toggle-switch::after { transform: translateX(24px); }
 
 .hidden { display: none !important; }
 </style>
@@ -213,127 +261,124 @@ input[type="file"] { padding: 0.25rem; }
 
 <body>
 
-<!-- Loading overlay (shown while PyScript loads) -->
+<!-- Loading overlay (shown while Pyodide loads) -->
 <div id="loading-overlay">
   <div class="spinner"></div>
-  <div class="msg">Loading PyScript &amp; NumPy...</div>
+  <div class="msg">Loading Pyodide &amp; NumPy...</div>
 </div>
+
+<div class="page-wrap">
 
 <!-- Header -->
 <header class="app-header">
   <h1>GuestScan</h1>
-  <span class="subtitle">Interactive DNA-Binding Register Scanner</span>
+  <span class="subtitle">Interactive Register Scanner</span>
 </header>
+<p class="app-intro">
+  The purpose of this utility is to explore the sterics and symmetry of installing different
+  DNA-binding domains within the porous scaffold crystals reported by the Snow laboratory.
+</p>
 
 <!-- ═══ Stage 1: Load Guest Protein ═══════════════════════════════ -->
 <section class="stage" id="stage1">
   <div class="stage-header">Stage 1: Load &amp; Configure Guest Protein</div>
   <div class="stage-body">
 
-    <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.8rem">
+    <p style="font-size:0.85rem; color:gray; margin-bottom:0.8rem">
       <strong>Step 1.</strong> Upload or fetch a model of your DNA-binding domain of interest.
     </p>
 
-    <!-- Scaffold + PDB input -->
-    <div class="row" style="margin-bottom:0.8rem">
-      <div style="min-width:130px">
-        <label for="scaffold-select">Scaffold</label>
-        <select id="scaffold-select">
-          <option value="9YZJ" selected>9YZJ (31 bp)</option>
-          <option value="9YZK">9YZK (42 bp)</option>
-        </select>
-      </div>
-      <div style="flex:1">
-        <label>Guest PDB</label>
-        <div class="pdb-input-row">
-          <input type="file" id="pdb-upload" accept=".pdb,.ent">
-          <span class="or-text">or</span>
-          <input type="text" id="pdb-code" placeholder="PDB code" style="width:6rem">
-          <button class="btn" id="btn-fetch" onclick="fetchPDB()">Fetch</button>
-        </div>
+    <!-- PDB input -->
+    <div style="margin-bottom:0.8rem">
+      <label>Guest PDB</label>
+      <div class="pdb-input-row">
+        <input type="file" id="pdb-upload" accept=".pdb,.ent">
+        <span class="or-text">or</span>
+        <input type="text" id="pdb-code" placeholder="PDB code" style="width:6rem">
+        <button class="btn btn-primary" id="btn-fetch" onclick="fetchPDB()">Fetch</button>
       </div>
     </div>
 
-    <div class="row">
-      <!-- Viewer 1 -->
-      <div class="col">
-        <div class="viewer-wrap">
-          <span class="viewer-label">Full PDB</span>
-          <div id="viewer1" class="molstar-container"></div>
+    <!-- Viewer 1: Full PDB (full width) -->
+    <div class="viewer-wrap" style="margin-bottom:1rem">
+      <span class="viewer-label">Full PDB</span>
+      <div id="viewer1" class="molstar-container"></div>
+    </div>
+
+    <!-- Step 2: Selection form -->
+    <p style="font-size:0.85rem; color:gray; margin-bottom:0.5rem">
+      <strong>Step 2.</strong> Use the fields below to truncate your input model so that it has
+      just one instance of your DNA binding domain and a minimal dsDNA segment it is bound to.
+      You can identify the chains and residue IDs by hovering over the model from Step 1.
+      Once you think you have your minimal model, try pressing <em>Preview Selection</em> to check.
+      Once your minimal model looks correct, proceed to Step 3.
+    </p>
+    <h3>Chain &amp; Residue Selection</h3>
+    <div class="selection-row">
+      <div class="sel-group">
+        <label>Protein chain(s):</label>
+        <select id="sel-prot-chains" multiple size="2" style="width:100%"></select>
+      </div>
+      <div class="sel-group">
+        <label>DNA chain 1:</label>
+        <select id="sel-dna1-chain"></select>
+        <div style="display:flex; gap:0.4rem; margin-top:0.3rem">
+          <div><label>lo:</label><input type="number" id="sel-dna1-lo"></div>
+          <div><label>hi:</label><input type="number" id="sel-dna1-hi"></div>
         </div>
       </div>
-
-      <!-- Selection form -->
-      <div class="col" style="max-width:340px">
-        <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem">
-          <strong>Step 2.</strong> Use the fields below to truncate your input model so that it has
-          just one instance of your DNA binding domain and a minimal dsDNA segment it is bound to.
-          You can identify the chains and residue IDs by hovering over the model from Step 1.
-          Once you think you have your minimal model, try pressing <em>Preview Selection</em> to check.
-          Once your minimal model looks correct, proceed to Step 3.
-        </p>
-        <h3>Chain &amp; Residue Selection</h3>
-        <div class="form-grid">
-          <label>Protein chain(s):</label>
-          <select id="sel-prot-chains" multiple size="2" style="width:100%"></select>
-          <label></label><span></span>
-
-          <label>DNA chain 1:</label>
-          <select id="sel-dna1-chain"></select>
-          <label>lo:</label>
-          <input type="number" id="sel-dna1-lo">
-
-          <label></label><span></span>
-          <label>hi:</label>
-          <input type="number" id="sel-dna1-hi">
-
-          <label>DNA chain 2:</label>
-          <select id="sel-dna2-chain"></select>
-          <label>lo:</label>
-          <input type="number" id="sel-dna2-lo">
-
-          <label></label><span></span>
-          <label>hi:</label>
-          <input type="number" id="sel-dna2-hi">
+      <div class="sel-group">
+        <label>DNA chain 2:</label>
+        <select id="sel-dna2-chain"></select>
+        <div style="display:flex; gap:0.4rem; margin-top:0.3rem">
+          <div><label>lo:</label><input type="number" id="sel-dna2-lo"></div>
+          <div><label>hi:</label><input type="number" id="sel-dna2-hi"></div>
         </div>
-
-        <div class="checkbox-row" style="margin-top:0.4rem">
+      </div>
+      <div class="sel-group" style="align-self:end">
+        <div class="checkbox-row">
           <input type="checkbox" id="sel-hetatm">
           <label for="sel-hetatm" style="display:inline; margin:0">Include HETATM</label>
         </div>
-
-        <div style="margin-top:0.6rem; display:flex; gap:0.5rem">
-          <button class="btn" id="btn-preview" onclick="previewSelection()" disabled>Preview Selection</button>
-        </div>
-        <div class="status" id="status-selection"></div>
-
-        <!-- Viewer 2 -->
-        <div class="viewer-wrap" style="margin-top:0.6rem">
-          <span class="viewer-label">Truncated Guest</span>
-          <div id="viewer2" class="molstar-container" style="height:280px"></div>
-        </div>
       </div>
     </div>
 
-    <div style="margin-top:1rem; text-align:center">
-      <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem">
-        <strong>Step 3.</strong> Press the <em>Scan Possible Binding Registers</em> button.
-      </p>
+    <div style="margin-top:0.6rem; display:flex; gap:0.5rem; align-items:center">
+      <button class="btn btn-primary" id="btn-preview" onclick="previewSelection()" disabled>Preview Selection</button>
+      <span class="status" id="status-selection"></span>
+    </div>
+
+    <!-- Viewer 2: Truncated Guest -->
+    <div class="viewer-wrap" style="margin-top:0.8rem">
+      <span class="viewer-label">Truncated Guest</span>
+      <div id="viewer2" class="molstar-container" style="height:320px"></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ Stage 2: Scan ════════════════════════════════════════════ -->
+<section class="stage" id="stage2">
+  <div class="stage-header">Stage 2: Scan</div>
+  <div class="stage-body">
+    <div style="display:flex; align-items:center; justify-content:center; gap:2rem; flex-wrap:wrap; margin-bottom:0.8rem">
+      <!-- Scaffold toggle -->
+      <div class="scaffold-toggle">
+        <input type="checkbox" id="scaffold-toggle" class="toggle-checkbox">
+        <label for="scaffold-toggle" class="toggle-label">
+          <span class="toggle-opt toggle-left">CC1<sup>+10</sup> <small>(31 bp)</small></span>
+          <span class="toggle-switch"></span>
+          <span class="toggle-opt toggle-right">CC1<sup>+21</sup> <small>(42 bp)</small></span>
+        </label>
+      </div>
       <button class="btn btn-primary" id="btn-scan" onclick="startScan()" disabled style="font-size:1rem; padding:0.6rem 2rem">
         Scan Possible Binding Registers
       </button>
     </div>
-  </div>
-</section>
-
-<!-- ═══ Stage 2: Running Pipeline ═════════════════════════════════ -->
-<section class="stage hidden" id="stage2">
-  <div class="stage-header">Stage 2: Running Pipeline</div>
-  <div class="stage-body">
     <div class="progress-wrap">
       <div class="progress-bar-bg">
         <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
-        <div class="progress-text" id="progress-text">Initializing...</div>
+        <div class="progress-text" id="progress-text">Ready</div>
       </div>
     </div>
     <div class="status info" id="status-pipeline"></div>
@@ -352,18 +397,37 @@ input[type="file"] { padding: 0.25rem; }
           <div id="viewer3" class="molstar-container"></div>
         </div>
       </div>
-      <!-- Summary -->
-      <div class="col" style="max-width:340px">
-        <div class="summary-box" id="results-summary"></div>
+      <!-- Summary + download -->
+      <div class="col" style="max-width:154px; min-width:130px; flex:0 0 auto">
+        <div class="summary-box" id="results-summary" style="font-size:0.85em"></div>
+        <button class="btn btn-primary" id="btn-download-pdb" onclick="downloadCurrentPdb()" style="margin-top:6px; width:100%; font-size:0.75em; padding:5px 6px">
+          Download Model (.pdb)
+        </button>
+        <button class="btn btn-primary" id="btn-download-seqs" onclick="downloadSequences()" style="margin-top:4px; width:100%; font-size:0.75em; padding:5px 6px">
+          Download Sequences (.txt)
+        </button>
+        <p style="margin-top:6px; font-size:0.6em; color:#333; line-height:1.4">
+          <strong>Key:</strong> Scaffold protein RepE54 (<span style="color:#7ec8e3">light blue</span>), Target guest site (<span style="color:#cc0088">magenta</span>), Closest guest symmetry mate (<span style="color:#ffaacc">pink</span>)
+        </p>
+        <p style="margin-top:4px; font-size:0.6em; color:silver; line-height:1.3">
+          Left-click to rotate, scroll to zoom, control-left-click or right-click to pan, shift-scroll to adjust clipping.
+        </p>
       </div>
     </div>
 
-    <p style="font-size:0.85rem; color:var(--text-dim); margin-top:1rem; margin-bottom:0.5rem">
+    <p style="margin-top:10px; margin-bottom:6px">
       <strong>Step 4.</strong> Try clicking on the different sliding window options below to see
       the different guest DBD placements.
     </p>
-    <h3>Register Diagram <span style="color:var(--text-dim);font-size:0.75rem">(click a bar to view in 3D)</span></h3>
+    <h3>Register Diagram <span style="color:silver;font-size:0.75em">(click a bar to view in 3D)</span></h3>
     <div id="svg-container"></div>
+    <p style="margin-top:8px; line-height:1.5">
+      This diagram shows possible binding registers that might be sterically feasible, colored
+      by how close they get to other biomolecules within the lattice (excluding their dsDNA stack).
+      The candidate registers with magenta boundaries overlap with the scaffold protein (RepE54)
+      binding window which will presumably prevent freely changing the sequence in pursuit of
+      guest installation.
+    </p>
   </div>
 </section>
 
@@ -377,6 +441,7 @@ let truncatedPdbStr = null;     // After step A
 let scaffoldCode = '9YZJ';
 let scaffoldData = {};          // Pre-fetched scaffold/mate data
 let registerPdbs = {};          // obj_name -> pdb string (from pipeline)
+let registerSymPdbs = {};       // obj_name -> symmetry copy pdb string
 let rankedResults = [];         // Ranked register list
 let activeRegister = null;      // Currently displayed register
 
@@ -404,19 +469,28 @@ async function loadPdbInViewer(viewer, pdbString, label) {
     if (!viewer || !pdbString) return;
     await viewer.plugin.clear();
     await viewer.loadStructureFromData(pdbString, 'pdb', { dataLabel: label || 'structure' });
-    hideWater(viewer);
+    hideWaterAndIons(viewer);
     applyStylized(viewer);
 }
 
-function hideWater(viewer) {
+function hideWaterAndIons(viewer) {
     const hm = viewer.plugin.managers.structure.hierarchy;
-    const water = [];
+    const hideKeys = new Set([
+        'structure-component-static-water',
+        'structure-component-static-ligand',
+        'structure-component-static-ion',
+        'structure-component-static-lipid',
+        'structure-component-static-branched',
+        'structure-component-static-non-standard',
+        'structure-component-static-coarse',
+    ]);
+    const toHide = [];
     for (const struct of hm.current.structures) {
         for (const comp of struct.components) {
-            if (comp.key === 'structure-component-static-water') water.push(comp);
+            if (hideKeys.has(comp.key)) toHide.push(comp);
         }
     }
-    if (water.length > 0) hm.toggleVisibility(water, 'hide');
+    if (toHide.length > 0) hm.toggleVisibility(toHide, 'hide');
 }
 
 function applyStylized(viewer) {
@@ -427,6 +501,7 @@ function applyStylized(viewer) {
         ...plugin.managers.structure.component.state.options,
         ignoreLight: true,
     });
+    c3d.setProps({ camera: { mode: 'orthographic' } });
     const pp = c3d.props.postprocessing;
     c3d.setProps({
         postprocessing: {
@@ -498,9 +573,9 @@ document.getElementById('pdb-upload').addEventListener('change', function(e) {
     reader.readAsText(file);
 });
 
-// ── Scaffold selector ───────────────────────────────────────────
-document.getElementById('scaffold-select').addEventListener('change', function(e) {
-    scaffoldCode = e.target.value;
+// ── Scaffold toggle ─────────────────────────────────────────────
+document.getElementById('scaffold-toggle').addEventListener('change', function(e) {
+    scaffoldCode = e.target.checked ? '9YZK' : '9YZJ';
 });
 
 // ── Chain/Residue Detection ─────────────────────────────────────
@@ -660,7 +735,7 @@ function getSelectionParams() {
 // ── Start Scan ──────────────────────────────────────────────────
 async function startScan() {
     const params = getSelectionParams();
-    scaffoldCode = document.getElementById('scaffold-select').value;
+    scaffoldCode = document.getElementById('scaffold-toggle').checked ? '9YZK' : '9YZJ';
 
     // Ensure scaffold data is loaded
     if (!scaffoldData[scaffoldCode]) {
@@ -668,8 +743,7 @@ async function startScan() {
         await fetchScaffoldData(scaffoldCode);
     }
 
-    // Show stage 2, hide stage 3
-    document.getElementById('stage2').classList.remove('hidden');
+    // Hide stage 3 while running
     document.getElementById('stage3').classList.add('hidden');
     const scanBtn = document.getElementById('btn-scan');
     scanBtn.disabled = true;
@@ -723,6 +797,15 @@ window.updateProgress = function(step, current, total, message) {
 function onPipelineComplete(result) {
     rankedResults = result.ranked;
     registerPdbs = result.register_pdbs;
+    registerSymPdbs = result.register_sym_pdbs || {};
+    // Sequence data for .seqs download
+    window._seqData = {
+        scaffTopSeq: result.scaff_top_seq || '',
+        guestSeq1: result.guest_seq1 || '',
+        guestSeq2: result.guest_seq2 || '',
+        guestDnaChains: result.guest_dna_chains || [],
+        topChain: result.top_chain || '',
+    };
 
     // Show results stage
     document.getElementById('stage3').classList.remove('hidden');
@@ -779,11 +862,61 @@ async function loadRegisterInViewer3(objName) {
     // Update summary box to show this register's details
     if (reg) updateSummaryForRegister(reg);
 
-    // Remap guest chain IDs to avoid clashes with scaffold chains
+    const p = plugin3.plugin;
+    await p.clear();
+
     const sd = scaffoldData[scaffoldCode];
-    const remappedGuest = remapChainIds(pdbStr, sd.pdb);
-    const combined = sd.pdb + '\nEND\n' + remappedGuest;
-    await loadPdbInViewer(plugin3, combined, label);
+    const scaffJson = sd.json;
+    const dnaChains = scaffJson.dna_chains;   // ['A','B'] or ['E','F']
+    const protChain = Object.keys(scaffJson.chains).find(
+        ch => scaffJson.chains[ch].type === 'protein');
+
+    // 1. Crystal contacts: symmetry environment in light gray
+    //    (ASU also gray underneath; per-chain overlay covers it)
+    //    Strip HETATM (Mg etc.) before loading so ions don't appear in symmetry copies
+    const scaffAtomOnly = sd.pdb.split('\n').filter(l =>
+        !l.startsWith('HETATM')).join('\n');
+    try {
+        const data = await p.builders.data.rawData({ data: scaffAtomOnly, label: 'scaffold' });
+        const trajectory = await p.builders.structure.parseTrajectory(data, 'pdb');
+        await p.builders.structure.hierarchy.applyPreset(trajectory, 'preset-trajectory-crystal-contacts');
+        const structs = p.managers.structure.hierarchy.current.structures;
+        for (const s of structs) {
+            await p.managers.structure.component.updateRepresentationsTheme(s.components, {
+                color: 'uniform', colorParams: { value: 0xbbbbbb }
+            });
+        }
+    } catch (e) {
+        console.warn('Crystal contacts preset failed:', e);
+    }
+
+    // 2. ASU overlay: scaffold protein (light blue), DNA chains (black/wheat)
+    await loadAndColor(plugin3, extractChains(sd.pdb, [protChain]), 0x7ec8e3, 'scaffold protein');
+    await loadAndColor(plugin3, extractChains(sd.pdb, [dnaChains[0]]), 0x222222, 'DNA strand 1');
+    await loadAndColor(plugin3, extractChains(sd.pdb, [dnaChains[1]]), 0xd4a96a, 'DNA strand 2');
+
+    // 3. Guest protein (magenta) — strip DNA
+    const guestProtOnly = stripDnaChains(pdbStr);
+    const remappedGuest = remapChainIds(guestProtOnly, sd.pdb);
+    await loadAndColor(plugin3, remappedGuest, 0xcc0088, label);
+
+    // 4. Guest symmetry copy (light pink) — strip DNA
+    const symPdb = registerSymPdbs[objName] || '';
+    if (symPdb) {
+        const symProtOnly = stripDnaChains(symPdb);
+        await loadAndColor(plugin3, symProtOnly, 0xffaacc, 'sym copy');
+    }
+
+    // 5. Style
+    hideWaterAndIons(plugin3);
+    applyStylized(plugin3);
+
+    // 6. Focus camera on the guest domain (magenta)
+    const sphere = pdbBoundingSphere(remappedGuest);
+    if (sphere && p.canvas3d) {
+        const center = new Float64Array(sphere.center);
+        p.canvas3d.camera.focus(center, sphere.radius * 1.5, 250);
+    }
 }
 
 // ── Summary update ──────────────────────────────────────────────
@@ -850,6 +983,213 @@ function remapChainIds(guestPdb, scaffoldPdb) {
         return line;
     });
     return remapped.join('\n');
+}
+
+// ── Identify DNA chain IDs in a PDB string ──────────────────────
+function findDnaChainIds(pdbStr) {
+    const dnaResnames = new Set(['DA', 'DT', 'DC', 'DG', ' DA', ' DT', ' DC', ' DG']);
+    const chainResnames = {};
+    for (const line of pdbStr.split('\n')) {
+        if (!line.startsWith('ATOM') || line.length < 54) continue;
+        const ch = line[21];
+        const resn = line.substring(17, 20).trim();
+        if (!chainResnames[ch]) chainResnames[ch] = new Set();
+        chainResnames[ch].add(resn);
+    }
+    const dnaChains = new Set();
+    for (const [ch, resnames] of Object.entries(chainResnames)) {
+        if ([...resnames].every(rn => dnaResnames.has(rn))) dnaChains.add(ch);
+    }
+    return dnaChains;
+}
+
+// ── Strip DNA chains from PDB string ────────────────────────────
+function stripDnaChains(pdbStr) {
+    const dnaChains = findDnaChainIds(pdbStr);
+    if (dnaChains.size === 0) return pdbStr;
+    return pdbStr.split('\n').filter(line => {
+        if ((line.startsWith('ATOM') || line.startsWith('HETATM') || line.startsWith('TER')) && line.length > 21) {
+            return !dnaChains.has(line[21]);
+        }
+        return true;
+    }).join('\n');
+}
+
+// ── Extract only DNA chains from PDB string ─────────────────────
+function extractDnaOnly(pdbStr) {
+    const dnaChains = findDnaChainIds(pdbStr);
+    if (dnaChains.size === 0) return '';
+    return pdbStr.split('\n').filter(line => {
+        if ((line.startsWith('ATOM') || line.startsWith('TER')) && line.length > 21) {
+            return dnaChains.has(line[21]);
+        }
+        return false;
+    }).join('\n');
+}
+
+// ── Extract ATOM lines for specific chains (skip HETATM) ────────
+function extractChains(pdbStr, chains) {
+    const keep = new Set(chains);
+    return pdbStr.split('\n').filter(line => {
+        if (line.startsWith('ATOM') && line.length > 21) return keep.has(line[21]);
+        if (line.startsWith('TER') && line.length > 21) return keep.has(line[21]);
+        return false;
+    }).join('\n');
+}
+
+// ── Load PDB string into viewer and color uniformly ─────────────
+async function loadAndColor(viewer, pdbStr, colorHex, label) {
+    if (!pdbStr.trim()) return;
+    await viewer.loadStructureFromData(pdbStr, 'pdb', { dataLabel: label || 'structure' });
+    const structs = viewer.plugin.managers.structure.hierarchy.current.structures;
+    const s = structs[structs.length - 1]; // last loaded
+    if (s) {
+        await viewer.plugin.managers.structure.component.updateRepresentationsTheme(s.components, {
+            color: 'uniform', colorParams: { value: colorHex }
+        });
+    }
+}
+
+// ── Insert TER records at chain boundaries ──────────────────────
+function insertTerRecords(pdbStr) {
+    const lines = pdbStr.split('\n');
+    const result = [];
+    let lastChain = null;
+    for (const line of lines) {
+        if (line.startsWith('ATOM') || line.startsWith('HETATM')) {
+            if (line.length > 21) {
+                const ch = line[21];
+                if (lastChain !== null && ch !== lastChain) {
+                    result.push('TER');
+                }
+                lastChain = ch;
+            }
+            result.push(line);
+        } else if (line.startsWith('TER')) {
+            continue; // skip existing TER records; we add our own
+        } else if (line.trim()) {
+            result.push(line);
+        }
+    }
+    if (lastChain !== null) result.push('TER');
+    return result.join('\n');
+}
+
+// ── Compute bounding sphere of ATOM coords in PDB string ────────
+function pdbBoundingSphere(pdbStr) {
+    let sx = 0, sy = 0, sz = 0, n = 0;
+    for (const line of pdbStr.split('\n')) {
+        if (!line.startsWith('ATOM') || line.length < 54) continue;
+        sx += parseFloat(line.substring(30, 38));
+        sy += parseFloat(line.substring(38, 46));
+        sz += parseFloat(line.substring(46, 54));
+        n++;
+    }
+    if (n === 0) return null;
+    const cx = sx / n, cy = sy / n, cz = sz / n;
+    let maxR2 = 0;
+    for (const line of pdbStr.split('\n')) {
+        if (!line.startsWith('ATOM') || line.length < 54) continue;
+        const dx = parseFloat(line.substring(30, 38)) - cx;
+        const dy = parseFloat(line.substring(38, 46)) - cy;
+        const dz = parseFloat(line.substring(46, 54)) - cz;
+        const r2 = dx * dx + dy * dy + dz * dz;
+        if (r2 > maxR2) maxR2 = r2;
+    }
+    return { center: [cx, cy, cz], radius: Math.sqrt(maxR2) };
+}
+
+// ── Download current model as PDB ────────────────────────────────
+function downloadCurrentPdb() {
+    if (!activeRegister || !scaffoldData[scaffoldCode]) return;
+
+    const sd = scaffoldData[scaffoldCode];
+    const scaffJson = sd.json;
+    const dnaChains = scaffJson.dna_chains;
+    const protChain = Object.keys(scaffJson.chains).find(
+        ch => scaffJson.chains[ch].type === 'protein');
+
+    // Extract CRYST1 record from scaffold PDB
+    const cryst1 = sd.pdb.split('\n').find(l => l.startsWith('CRYST1')) || '';
+
+    // Scaffold ASU (ATOM only, no HETATM cations)
+    const scaffAtoms = extractChains(sd.pdb, [protChain, ...dnaChains]);
+
+    // Guest: remap chains, then split into protein and DNA
+    const pdbStr = registerPdbs[activeRegister];
+    if (!pdbStr) return;
+    const remappedGuest = remapChainIds(pdbStr, sd.pdb);
+    const guestProtein = stripDnaChains(remappedGuest);
+    const guestDna = extractDnaOnly(remappedGuest);
+
+    // MODEL 1: scaffold ASU + guest protein
+    // MODEL 2: guest DNA (separate model avoids PyMOL drawing inter-chain bonds)
+    let combined = '';
+    if (cryst1) combined += cryst1 + '\n';
+    combined += 'REMARK   GuestScan model: ' + activeRegister + ' on scaffold ' + scaffoldCode + '\n';
+    combined += 'MODEL        1\n';
+    combined += insertTerRecords(scaffAtoms) + '\n';
+    combined += insertTerRecords(guestProtein) + '\n';
+    combined += 'ENDMDL\n';
+    if (guestDna.trim()) {
+        combined += 'MODEL        2\n';
+        combined += insertTerRecords(guestDna) + '\n';
+        combined += 'ENDMDL\n';
+    }
+    combined += 'END\n';
+
+    // Trigger download
+    const blob = new Blob([combined], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeRegister + '_' + scaffoldCode + '.pdb';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ── Download ranked sequences file ────────────────────────────────
+function downloadSequences() {
+    if (!rankedResults.length || !window._seqData) return;
+    const sd = window._seqData;
+    const WC = { A: 'T', T: 'A', G: 'C', C: 'G' };
+    const wcComp = s => [...s].map(b => WC[b] || b).join('');
+
+    const scaffJson = scaffoldData[scaffoldCode].json;
+    const dnaChains = scaffJson.dna_chains;
+    const topChain = sd.topChain;
+    const botChain = dnaChains.find(c => c !== topChain) || dnaChains[1];
+    const scaffBotDisplay = wcComp(sd.scaffTopSeq);
+    const gch1 = sd.guestDnaChains[0] || '?';
+    const gch2 = sd.guestDnaChains[1] || '?';
+    const botGuestDisplay = wcComp(sd.guestSeq1);
+
+    let out = '';
+    out += `>scaffold_dna_${scaffJson.pdb_id}_chain${topChain}+${botChain}\n`;
+    out += `  top  5'-${sd.scaffTopSeq}-3'\n`;
+    out += `  bot  3'-${scaffBotDisplay}-5'\n`;
+    out += `>guest_dbd_chain${gch1}+${gch2}\n`;
+    out += `  top  5'-${sd.guestSeq1}-3'  (chain ${gch1}, used as top in fwd)\n`;
+    out += `  bot  3'-${botGuestDisplay}-5'  (chain ${gch2}, used as top in rev)\n`;
+    for (const r of rankedResults) {
+        const tag = r.classification;
+        out += `>rank${r.rank}.${r.obj_name}  pos=${r.start_pos}..${r.end_pos}  `;
+        out += `${r.orientation}  min=${r.min_dist.toFixed(2)}A  [${tag}]\n`;
+        out += `  top  5'-${r.composite_top}-3'\n`;
+        out += `  bot  3'-${r.composite_bot}-5'\n`;
+    }
+
+    const blob = new Blob([out], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ranked_sequences_' + scaffoldCode + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 // ── Utility ─────────────────────────────────────────────────────
@@ -927,6 +1267,7 @@ def _call_pipeline(guest_pdb_str, scaffold_json_str, scaffold_pdb_str,
     svg = pipeline.step_F_diagram_svg(e_result, scaffold_json, d_result)
 
     register_pdbs = b_result.get('register_pdbs', {})
+    register_sym_pdbs = e_result.get('register_sym_pdbs', {})
     ranked = e_result['ranked']
     ranked_clean = []
     for r in ranked:
@@ -937,7 +1278,13 @@ def _call_pipeline(guest_pdb_str, scaffold_json_str, scaffold_pdb_str,
     return json.dumps({
         'ranked': ranked_clean,
         'register_pdbs': register_pdbs,
+        'register_sym_pdbs': register_sym_pdbs,
         'svg': svg,
+        'scaff_top_seq': e_result.get('scaff_top_seq', ''),
+        'guest_seq1': e_result.get('guest_seq1', ''),
+        'guest_seq2': e_result.get('guest_seq2', ''),
+        'guest_dna_chains': e_result.get('guest_dna_chains', []),
+        'top_chain': e_result.get('top_chain', ''),
     })
 `);
 
@@ -962,5 +1309,6 @@ async function bootAll() {
 bootAll();
 </script>
 
+</div><!-- .page-wrap -->
 </body>
 </html>
