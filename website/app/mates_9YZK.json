@@ -1,0 +1,38 @@
+{
+  "scaffold": "9YZK",
+  "space_group": "I 1 2 1",
+  "dna_chains": [
+    "E",
+    "F"
+  ],
+  "dna_axis": [
+    0.3972,
+    -0.5918,
+    -0.7015
+  ],
+  "dna_length": 133.1,
+  "mates": {
+    "top": {
+      "pdb_file": "symmetry_mates/9YZK_top.pdb",
+      "sym_op": 2,
+      "unit_cell": [
+        0,
+        -1,
+        -1
+      ],
+      "gap": 3.24,
+      "pure_translation": true
+    },
+    "bot": {
+      "pdb_file": "symmetry_mates/9YZK_bot.pdb",
+      "sym_op": 2,
+      "unit_cell": [
+        -1,
+        0,
+        0
+      ],
+      "gap": 3.24,
+      "pure_translation": true
+    }
+  }
+}

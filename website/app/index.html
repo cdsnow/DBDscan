@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GuestScan — Interactive DNA-Binding Register Scanner</title>
+
+<!-- Mol* Viewer -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/molstar@4.5.0/build/viewer/molstar.css">
+<script src="https://cdn.jsdelivr.net/npm/molstar@4.5.0/build/viewer/molstar.js"></script>
+
+<!-- PyScript / Pyodide -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+
+<style>
+/* ── Reset & Base ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-input: #0f3460;
+  --text: #e0e0e0;
+  --text-dim: #8899aa;
+  --accent: #00d4ff;
+  --accent-dim: #0077aa;
+  --success: #00e676;
+  --warning: #ffab40;
+  --error: #ff5252;
+  --border: #2a3a5e;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+h1 { font-size: 1.5rem; font-weight: 600; color: var(--accent); }
+h2 { font-size: 1.15rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
+h3 { font-size: 0.95rem; font-weight: 500; color: var(--text-dim); margin-bottom: 0.4rem; }
+
+.app-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 1rem;
+}
+.app-header .subtitle { color: var(--text-dim); font-size: 0.85rem; }
+
+/* ── Cards / Stages ───────────────────────────────────── */
+.stage {
+  margin: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.stage-header {
+  padding: 0.6rem 1rem;
+  background: rgba(0,212,255,0.06);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.stage-body { padding: 1rem; }
+
+/* ── Form elements ────────────────────────────────────── */
+label { font-size: 0.82rem; color: var(--text-dim); display: block; margin-bottom: 0.2rem; }
+select, input[type="text"], input[type="number"], input[type="file"] {
+  background: var(--bg-input); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 0.35rem 0.5rem; font-size: 0.85rem;
+  width: 100%;
+}
+select:focus, input:focus { outline: none; border-color: var(--accent); }
+input[type="number"] { width: 5rem; }
+input[type="file"] { padding: 0.25rem; }
+
+.btn {
+  background: var(--accent-dim); color: #fff;
+  border: none; border-radius: 4px;
+  padding: 0.45rem 1rem; font-size: 0.85rem;
+  cursor: pointer; font-weight: 500;
+  transition: background 0.15s;
+}
+.btn:hover { background: var(--accent); color: #000; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: #0a8754; }
+.btn-primary:hover { background: var(--success); color: #000; }
+
+.checkbox-row { display: flex; align-items: center; gap: 0.4rem; margin: 0.3rem 0; }
+.checkbox-row input[type="checkbox"] { width: auto; }
+
+/* ── Layout ───────────────────────────────────────────── */
+.row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.col { flex: 1; min-width: 280px; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  gap: 0.4rem 0.6rem;
+  align-items: center;
+}
+.form-grid label { margin-bottom: 0; }
+.form-grid .span-full { grid-column: 1 / -1; }
+.form-grid .span-3 { grid-column: span 3; }
+
+/* ── Mol* viewer containers ───────────────────────────── */
+.viewer-wrap {
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.viewer-wrap .viewer-label {
+  position: absolute; top: 4px; left: 8px;
+  font-size: 0.7rem; color: var(--text-dim);
+  z-index: 10; pointer-events: none;
+  background: rgba(0,0,0,0.5); padding: 1px 6px; border-radius: 3px;
+}
+.molstar-container { width: 100%; height: 400px; }
+
+/* ── PDB input section ────────────────────────────────── */
+.pdb-input-row {
+  display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+.pdb-input-row .or-text {
+  color: var(--text-dim); font-size: 0.8rem; padding-bottom: 0.35rem;
+}
+
+/* ── Progress bar ─────────────────────────────────────── */
+.progress-wrap { margin: 0.5rem 0; }
+.progress-bar-bg {
+  background: #0f1a3a; border-radius: 6px;
+  height: 24px; overflow: hidden; position: relative;
+}
+.progress-bar-fill {
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  height: 100%; border-radius: 6px;
+  transition: width 0.2s ease;
+  background-size: 30px 30px;
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 10px,
+    rgba(255,255,255,0.08) 10px, rgba(255,255,255,0.08) 20px);
+  animation: stripe 0.8s linear infinite;
+}
+.progress-bar-fill.done {
+  animation: none;
+  background-image: none;
+}
+@keyframes stripe {
+  0% { background-position: 0 0; }
+  100% { background-position: 30px 0; }
+}
+.progress-text {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; font-weight: 500; color: #fff;
+  pointer-events: none;
+}
+
+/* ── Status messages ──────────────────────────────────── */
+.status { font-size: 0.82rem; margin: 0.4rem 0; min-height: 1.2em; }
+.status.ok { color: var(--success); }
+.status.error { color: var(--error); }
+.status.info { color: var(--accent); }
+
+/* ── Results summary ──────────────────────────────────── */
+.summary-box {
+  background: rgba(0,212,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.8rem;
+  font-size: 0.85rem;
+}
+.summary-box .metric { margin: 0.2rem 0; }
+.summary-box .metric strong { color: var(--accent); }
+
+/* ── SVG diagram container ────────────────────────────── */
+#svg-container {
+  overflow-x: auto;
+  background: #111;
+  border-radius: 6px;
+  padding: 0.5rem;
+  margin-top: 0.8rem;
+}
+#svg-container svg { display: block; max-width: 100%; height: auto; }
+
+/* ── Loading overlay ──────────────────────────────────── */
+#loading-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(26,26,46,0.92);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+#loading-overlay .spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading-overlay .msg { margin-top: 1rem; color: var(--text-dim); font-size: 0.9rem; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+
+<body>
+
+<!-- Loading overlay (shown while PyScript loads) -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="msg">Loading PyScript &amp; NumPy...</div>
+</div>
+
+<!-- Header -->
+<header class="app-header">
+  <h1>GuestScan</h1>
+  <span class="subtitle">Interactive DNA-Binding Register Scanner</span>
+</header>
+
+<!-- ═══ Stage 1: Load Guest Protein ═══════════════════════════════ -->
+<section class="stage" id="stage1">
+  <div class="stage-header">Stage 1: Load &amp; Configure Guest Protein</div>
+  <div class="stage-body">
+
+    <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.8rem">
+      <strong>Step 1.</strong> Upload or fetch a model of your DNA-binding domain of interest.
+    </p>
+
+    <!-- Scaffold + PDB input -->
+    <div class="row" style="margin-bottom:0.8rem">
+      <div style="min-width:130px">
+        <label for="scaffold-select">Scaffold</label>
+        <select id="scaffold-select">
+          <option value="9YZJ" selected>9YZJ (31 bp)</option>
+          <option value="9YZK">9YZK (42 bp)</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <label>Guest PDB</label>
+        <div class="pdb-input-row">
+          <input type="file" id="pdb-upload" accept=".pdb,.ent">
+          <span class="or-text">or</span>
+          <input type="text" id="pdb-code" placeholder="PDB code" style="width:6rem">
+          <button class="btn" id="btn-fetch" onclick="fetchPDB()">Fetch</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Viewer 1 -->
+      <div class="col">
+        <div class="viewer-wrap">
+          <span class="viewer-label">Full PDB</span>
+          <div id="viewer1" class="molstar-container"></div>
+        </div>
+      </div>
+
+      <!-- Selection form -->
+      <div class="col" style="max-width:340px">
+        <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem">
+          <strong>Step 2.</strong> Use the fields below to truncate your input model so that it has
+          just one instance of your DNA binding domain and a minimal dsDNA segment it is bound to.
+          You can identify the chains and residue IDs by hovering over the model from Step 1.
+          Once you think you have your minimal model, try pressing <em>Preview Selection</em> to check.
+          Once your minimal model looks correct, proceed to Step 3.
+        </p>
+        <h3>Chain &amp; Residue Selection</h3>
+        <div class="form-grid">
+          <label>Protein chain(s):</label>
+          <select id="sel-prot-chains" multiple size="2" style="width:100%"></select>
+          <label></label><span></span>
+
+          <label>DNA chain 1:</label>
+          <select id="sel-dna1-chain"></select>
+          <label>lo:</label>
+          <input type="number" id="sel-dna1-lo">
+
+          <label></label><span></span>
+          <label>hi:</label>
+          <input type="number" id="sel-dna1-hi">
+
+          <label>DNA chain 2:</label>
+          <select id="sel-dna2-chain"></select>
+          <label>lo:</label>
+          <input type="number" id="sel-dna2-lo">
+
+          <label></label><span></span>
+          <label>hi:</label>
+          <input type="number" id="sel-dna2-hi">
+        </div>
+
+        <div class="checkbox-row" style="margin-top:0.4rem">
+          <input type="checkbox" id="sel-hetatm">
+          <label for="sel-hetatm" style="display:inline; margin:0">Include HETATM</label>
+        </div>
+
+        <div style="margin-top:0.6rem; display:flex; gap:0.5rem">
+          <button class="btn" id="btn-preview" onclick="previewSelection()" disabled>Preview Selection</button>
+        </div>
+        <div class="status" id="status-selection"></div>
+
+        <!-- Viewer 2 -->
+        <div class="viewer-wrap" style="margin-top:0.6rem">
+          <span class="viewer-label">Truncated Guest</span>
+          <div id="viewer2" class="molstar-container" style="height:280px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1rem; text-align:center">
+      <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem">
+        <strong>Step 3.</strong> Press the <em>Scan Possible Binding Registers</em> button.
+      </p>
+      <button class="btn btn-primary" id="btn-scan" onclick="startScan()" disabled style="font-size:1rem; padding:0.6rem 2rem">
+        Scan Possible Binding Registers
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Stage 2: Running Pipeline ═════════════════════════════════ -->
+<section class="stage hidden" id="stage2">
+  <div class="stage-header">Stage 2: Running Pipeline</div>
+  <div class="stage-body">
+    <div class="progress-wrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+        <div class="progress-text" id="progress-text">Initializing...</div>
+      </div>
+    </div>
+    <div class="status info" id="status-pipeline"></div>
+  </div>
+</section>
+
+<!-- ═══ Stage 3: Results ══════════════════════════════════════════ -->
+<section class="stage hidden" id="stage3">
+  <div class="stage-header">Stage 3: Results</div>
+  <div class="stage-body">
+    <div class="row">
+      <!-- Viewer 3 -->
+      <div class="col">
+        <div class="viewer-wrap">
+          <span class="viewer-label" id="viewer3-label">Rank 1</span>
+          <div id="viewer3" class="molstar-container"></div>
+        </div>
+      </div>
+      <!-- Summary -->
+      <div class="col" style="max-width:340px">
+        <div class="summary-box" id="results-summary"></div>
+      </div>
+    </div>
+
+    <p style="font-size:0.85rem; color:var(--text-dim); margin-top:1rem; margin-bottom:0.5rem">
+      <strong>Step 4.</strong> Try clicking on the different sliding window options below to see
+      the different guest DBD placements.
+    </p>
+    <h3>Register Diagram <span style="color:var(--text-dim);font-size:0.75rem">(click a bar to view in 3D)</span></h3>
+    <div id="svg-container"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  JavaScript Layer                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<script>
+// ── Global state ────────────────────────────────────────────────
+let guestPdbString = null;      // Full uploaded PDB text
+let truncatedPdbStr = null;     // After step A
+let scaffoldCode = '9YZJ';
+let scaffoldData = {};          // Pre-fetched scaffold/mate data
+let registerPdbs = {};          // obj_name -> pdb string (from pipeline)
+let rankedResults = [];         // Ranked register list
+let activeRegister = null;      // Currently displayed register
+
+// Mol* plugin instances
+let plugin1 = null, plugin2 = null, plugin3 = null;
+
+// ── Mol* Viewer Init ────────────────────────────────────────────
+async function initViewers() {
+    const opts = {
+        layoutIsExpanded: false,
+        layoutShowControls: false,
+        layoutShowRemoteState: false,
+        layoutShowSequence: false,
+        layoutShowLog: false,
+        viewportShowExpand: false,
+        viewportShowSelectionMode: false,
+        viewportShowAnimation: false,
+    };
+    plugin1 = await molstar.Viewer.create('viewer1', opts);
+    plugin2 = await molstar.Viewer.create('viewer2', opts);
+    plugin3 = await molstar.Viewer.create('viewer3', opts);
+}
+
+async function loadPdbInViewer(viewer, pdbString, label) {
+    if (!viewer || !pdbString) return;
+    await viewer.plugin.clear();
+    await viewer.loadStructureFromData(pdbString, 'pdb', { dataLabel: label || 'structure' });
+    hideWater(viewer);
+    applyStylized(viewer);
+}
+
+function hideWater(viewer) {
+    const hm = viewer.plugin.managers.structure.hierarchy;
+    const water = [];
+    for (const struct of hm.current.structures) {
+        for (const comp of struct.components) {
+            if (comp.key === 'structure-component-static-water') water.push(comp);
+        }
+    }
+    if (water.length > 0) hm.toggleVisibility(water, 'hide');
+}
+
+function applyStylized(viewer) {
+    const plugin = viewer.plugin;
+    const c3d = plugin.canvas3d;
+    if (!c3d) return;
+    plugin.managers.structure.component.setOptions({
+        ...plugin.managers.structure.component.state.options,
+        ignoreLight: true,
+    });
+    const pp = c3d.props.postprocessing;
+    c3d.setProps({
+        postprocessing: {
+            outline: {
+                name: 'on',
+                params: pp.outline.name === 'on' ? pp.outline.params : {
+                    scale: 1, color: 0x000000, threshold: 0.33, includeTransparent: true,
+                }
+            },
+            occlusion: {
+                name: 'on',
+                params: pp.occlusion.name === 'on' ? pp.occlusion.params : {
+                    multiScale: { name: 'off', params: {} },
+                    radius: 5, bias: 0.8, blurKernelSize: 15, blurDepthBias: 0.5,
+                    samples: 32, resolutionScale: 1, color: 0x000000,
+                }
+            },
+            shadow: { name: 'off', params: {} },
+        }
+    });
+}
+
+// ── Pre-fetch scaffold data ─────────────────────────────────────
+async function fetchScaffoldData(code) {
+    const base = '.';
+    const [scaffJson, scaffPdb, matesJson, botPdb, topPdb] = await Promise.all([
+        fetch(`${base}/scaffold_${code}.json`).then(r => r.json()),
+        fetch(`${base}/scaffold_${code}.pdb`).then(r => r.text()),
+        fetch(`${base}/mates_${code}.json`).then(r => r.json()),
+        fetch(`${base}/mate_${code}_bot.pdb`).then(r => r.text()),
+        fetch(`${base}/mate_${code}_top.pdb`).then(r => r.text()),
+    ]);
+    scaffoldData[code] = {
+        json: scaffJson,
+        pdb: scaffPdb,
+        matesJson: matesJson,
+        botPdb: botPdb,
+        topPdb: topPdb,
+    };
+}
+
+// ── PDB Fetching ────────────────────────────────────────────────
+async function fetchPDB() {
+    const code = document.getElementById('pdb-code').value.trim();
+    if (!code || code.length < 4) {
+        setStatus('status-selection', 'Enter a 4-letter PDB code', 'error');
+        return;
+    }
+    setStatus('status-selection', `Fetching ${code.toUpperCase()} from RCSB...`, 'info');
+    try {
+        const resp = await fetch(`https://files.rcsb.org/download/${code.toUpperCase()}.pdb`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        guestPdbString = await resp.text();
+        onPdbLoaded();
+    } catch(e) {
+        setStatus('status-selection', `Failed to fetch: ${e.message}`, 'error');
+    }
+}
+
+// ── File upload handler ─────────────────────────────────────────
+document.getElementById('pdb-upload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        guestPdbString = ev.target.result;
+        onPdbLoaded();
+    };
+    reader.readAsText(file);
+});
+
+// ── Scaffold selector ───────────────────────────────────────────
+document.getElementById('scaffold-select').addEventListener('change', function(e) {
+    scaffoldCode = e.target.value;
+});
+
+// ── Chain/Residue Detection ─────────────────────────────────────
+function parsePdbChains(pdbText) {
+    const chains = {};
+    const dnaResnames = new Set(['DA', 'DT', 'DC', 'DG', ' DA', ' DT', ' DC', ' DG']);
+    const lines = pdbText.split('\n');
+    for (const line of lines) {
+        if (!line.startsWith('ATOM')) continue;  // skip HETATM (water/ions break DNA detection)
+        if (line.length < 54) continue;
+        const chain = line[21];
+        const resi = parseInt(line.substring(22, 26).trim());
+        const resn = line.substring(17, 20).trim();
+        if (!chains[chain]) {
+            chains[chain] = { resids: new Set(), resnames: new Set(), isDna: true };
+        }
+        chains[chain].resids.add(resi);
+        chains[chain].resnames.add(resn);
+    }
+    const result = {};
+    for (const [ch, info] of Object.entries(chains)) {
+        const resids = Array.from(info.resids).sort((a,b) => a-b);
+        const isDna = [...info.resnames].every(rn => dnaResnames.has(rn));
+        result[ch] = {
+            type: isDna ? 'DNA' : 'protein',
+            lo: resids[0],
+            hi: resids[resids.length - 1],
+            count: resids.length,
+        };
+    }
+    return result;
+}
+
+function populateSelectionForm(chainInfo) {
+    const protSel = document.getElementById('sel-prot-chains');
+    const dna1Sel = document.getElementById('sel-dna1-chain');
+    const dna2Sel = document.getElementById('sel-dna2-chain');
+
+    protSel.innerHTML = '';
+    dna1Sel.innerHTML = '';
+    dna2Sel.innerHTML = '';
+
+    const protChains = [];
+    const dnaChains = [];
+    for (const [ch, info] of Object.entries(chainInfo)) {
+        if (info.type === 'protein') protChains.push(ch);
+        else dnaChains.push(ch);
+    }
+
+    for (const ch of protChains) {
+        const opt = document.createElement('option');
+        opt.value = ch; opt.text = `${ch} (${chainInfo[ch].count} res)`;
+        opt.selected = true;
+        protSel.appendChild(opt);
+    }
+
+    for (let i = 0; i < dnaChains.length; i++) {
+        const ch = dnaChains[i];
+        const info = chainInfo[ch];
+
+        const opt1 = document.createElement('option');
+        opt1.value = ch; opt1.text = `${ch} (${info.lo}-${info.hi})`;
+        if (i === 0) opt1.selected = true;
+        dna1Sel.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = ch; opt2.text = `${ch} (${info.lo}-${info.hi})`;
+        if (i === 1) opt2.selected = true;
+        dna2Sel.appendChild(opt2);
+    }
+
+    // Auto-populate residue ranges
+    if (dnaChains.length >= 1) {
+        const ch1 = dnaChains[0];
+        document.getElementById('sel-dna1-lo').value = chainInfo[ch1].lo;
+        document.getElementById('sel-dna1-hi').value = chainInfo[ch1].hi;
+    }
+    if (dnaChains.length >= 2) {
+        const ch2 = dnaChains[1];
+        document.getElementById('sel-dna2-lo').value = chainInfo[ch2].lo;
+        document.getElementById('sel-dna2-hi').value = chainInfo[ch2].hi;
+    }
+
+    // Update ranges when DNA chain selection changes
+    dna1Sel.onchange = function() {
+        const info = chainInfo[this.value];
+        if (info) {
+            document.getElementById('sel-dna1-lo').value = info.lo;
+            document.getElementById('sel-dna1-hi').value = info.hi;
+        }
+    };
+    dna2Sel.onchange = function() {
+        const info = chainInfo[this.value];
+        if (info) {
+            document.getElementById('sel-dna2-lo').value = info.lo;
+            document.getElementById('sel-dna2-hi').value = info.hi;
+        }
+    };
+}
+
+// ── After PDB is loaded ─────────────────────────────────────────
+function onPdbLoaded() {
+    setStatus('status-selection', 'PDB loaded, parsing chains...', 'info');
+    const chainInfo = parsePdbChains(guestPdbString);
+    populateSelectionForm(chainInfo);
+    loadPdbInViewer(plugin1, guestPdbString, 'Full PDB');
+    document.getElementById('btn-preview').disabled = false;
+    document.getElementById('btn-scan').disabled = false;
+    setStatus('status-selection', `Loaded: ${Object.keys(chainInfo).length} chains detected`, 'ok');
+}
+
+// ── Preview Selection ───────────────────────────────────────────
+async function previewSelection() {
+    if (!guestPdbString || !window.pyValidate) return;
+    setStatus('status-selection', 'Validating selection...', 'info');
+
+    const params = getSelectionParams();
+    try {
+        const result = window.pyValidate(
+            guestPdbString, JSON.stringify(params.protChains),
+            params.dna1Chain, params.dna1Lo, params.dna1Hi,
+            params.dna2Chain, params.dna2Lo, params.dna2Hi
+        );
+        const res = JSON.parse(result);
+        if (res.ok) {
+            setStatus('status-selection', res.message, 'ok');
+            truncatedPdbStr = window.pyStepA(
+                guestPdbString, JSON.stringify(params.protChains),
+                params.dna1Chain, params.dna1Lo, params.dna1Hi,
+                params.dna2Chain, params.dna2Lo, params.dna2Hi,
+                params.hetatm
+            );
+            loadPdbInViewer(plugin2, truncatedPdbStr, 'Truncated Guest');
+        } else {
+            setStatus('status-selection', res.message, 'error');
+        }
+    } catch(e) {
+        setStatus('status-selection', `Error: ${e.message}`, 'error');
+    }
+}
+
+function getSelectionParams() {
+    const protSel = document.getElementById('sel-prot-chains');
+    const protChains = Array.from(protSel.selectedOptions).map(o => o.value);
+    return {
+        protChains: protChains,
+        dna1Chain: document.getElementById('sel-dna1-chain').value,
+        dna1Lo: parseInt(document.getElementById('sel-dna1-lo').value),
+        dna1Hi: parseInt(document.getElementById('sel-dna1-hi').value),
+        dna2Chain: document.getElementById('sel-dna2-chain').value,
+        dna2Lo: parseInt(document.getElementById('sel-dna2-lo').value),
+        dna2Hi: parseInt(document.getElementById('sel-dna2-hi').value),
+        hetatm: document.getElementById('sel-hetatm').checked,
+    };
+}
+
+// ── Start Scan ──────────────────────────────────────────────────
+async function startScan() {
+    const params = getSelectionParams();
+    scaffoldCode = document.getElementById('scaffold-select').value;
+
+    // Ensure scaffold data is loaded
+    if (!scaffoldData[scaffoldCode]) {
+        setStatus('status-selection', 'Loading scaffold data...', 'info');
+        await fetchScaffoldData(scaffoldCode);
+    }
+
+    // Show stage 2, hide stage 3
+    document.getElementById('stage2').classList.remove('hidden');
+    document.getElementById('stage3').classList.add('hidden');
+    const scanBtn = document.getElementById('btn-scan');
+    scanBtn.disabled = true;
+    scanBtn.textContent = 'Running...';
+    document.getElementById('progress-fill').classList.remove('done');
+
+    // First ensure we have truncated PDB
+    if (!truncatedPdbStr) {
+        truncatedPdbStr = window.pyStepA(
+            guestPdbString, JSON.stringify(params.protChains),
+            params.dna1Chain, params.dna1Lo, params.dna1Hi,
+            params.dna2Chain, params.dna2Lo, params.dna2Hi,
+            params.hetatm
+        );
+    }
+
+    // Run pipeline (synchronous — UI will freeze briefly)
+    updateProgress('Running', 0, 1, 'Running pipeline (this may take 10-30 seconds)...');
+    // Use setTimeout to allow the progress bar to render before blocking
+    setTimeout(() => {
+        try {
+            const sd = scaffoldData[scaffoldCode];
+            const resultJson = window.pyPipeline(
+                truncatedPdbStr,
+                JSON.stringify(sd.json),
+                sd.pdb,
+                JSON.stringify(sd.matesJson),
+                sd.botPdb,
+                sd.topPdb
+            );
+            const result = JSON.parse(resultJson);
+            onPipelineComplete(result);
+        } catch(e) {
+            setStatus('status-pipeline', `Pipeline error: ${e.message}`, 'error');
+            const scanBtn = document.getElementById('btn-scan');
+            scanBtn.disabled = false;
+            scanBtn.textContent = 'Scan Possible Binding Registers';
+            document.getElementById('progress-fill').classList.add('done');
+        }
+    }, 100);
+}
+
+// ── Progress callback (called from Python) ──────────────────────
+window.updateProgress = function(step, current, total, message) {
+    const pct = total > 0 ? Math.round(100 * current / total) : 0;
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = message || `${step}: ${current}/${total}`;
+};
+
+// ── Pipeline Complete ───────────────────────────────────────────
+function onPipelineComplete(result) {
+    rankedResults = result.ranked;
+    registerPdbs = result.register_pdbs;
+
+    // Show results stage
+    document.getElementById('stage3').classList.remove('hidden');
+    const scanBtn = document.getElementById('btn-scan');
+    scanBtn.disabled = false;
+    scanBtn.textContent = 'Scan Possible Binding Registers';
+    updateProgress('Done', 1, 1, 'Pipeline complete!');
+    document.getElementById('progress-fill').classList.add('done');
+
+    // Summary
+    const nTotal = rankedResults.length;
+    const nOk = rankedResults.filter(r => r.classification !== 'CLASH').length;
+    const nClash = nTotal - nOk;
+    const rank1 = rankedResults.length > 0 ? rankedResults[0] : null;
+
+    let html = '<div class="metric"><strong>' + nOk + '</strong> non-clashing registers</div>';
+    html += '<div class="metric"><strong>' + nClash + '</strong> clashing registers</div>';
+    if (rank1 && rank1.classification !== 'CLASH') {
+        html += '<div class="metric" style="margin-top:0.5rem">Rank 1: <strong>' + rank1.obj_name + '</strong></div>';
+        html += '<div class="metric">min_dist: <strong>' + rank1.min_dist.toFixed(1) + ' \u00c5</strong></div>';
+        html += '<div class="metric">Classification: ' + rank1.classification + '</div>';
+    }
+    document.getElementById('results-summary').innerHTML = html;
+
+    // SVG diagram
+    document.getElementById('svg-container').innerHTML = result.svg;
+
+    // Load rank 1 in viewer 3
+    if (rank1) {
+        loadRegisterInViewer3(rank1.obj_name);
+    }
+}
+
+// ── Register click handler ──────────────────────────────────────
+window.onRegisterBarClick = function(objName) {
+    loadRegisterInViewer3(objName);
+};
+
+async function loadRegisterInViewer3(objName) {
+    const pdbStr = registerPdbs[objName];
+    if (!pdbStr || !plugin3) return;
+
+    // Update active highlight in SVG
+    document.querySelectorAll('.register-bar.active').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll(`.register-bar[data-obj-name="${objName}"]`).forEach(el => el.classList.add('active'));
+
+    activeRegister = objName;
+
+    // Find rank info
+    const reg = rankedResults.find(r => r.obj_name === objName);
+    const label = reg ? `Rank ${reg.rank}: ${objName}` : objName;
+    document.getElementById('viewer3-label').textContent = label;
+
+    // Update summary box to show this register's details
+    if (reg) updateSummaryForRegister(reg);
+
+    // Remap guest chain IDs to avoid clashes with scaffold chains
+    const sd = scaffoldData[scaffoldCode];
+    const remappedGuest = remapChainIds(pdbStr, sd.pdb);
+    const combined = sd.pdb + '\nEND\n' + remappedGuest;
+    await loadPdbInViewer(plugin3, combined, label);
+}
+
+// ── Summary update ──────────────────────────────────────────────
+function updateSummaryForRegister(reg) {
+    const nTotal = rankedResults.length;
+    const nOk = rankedResults.filter(r => r.classification !== 'CLASH').length;
+    const nClash = nTotal - nOk;
+
+    let html = '<div class="metric"><strong>' + nOk + '</strong> non-clashing registers</div>';
+    html += '<div class="metric"><strong>' + nClash + '</strong> clashing registers</div>';
+    html += '<div class="metric" style="margin-top:0.5rem">Viewing: <strong>Rank ' + reg.rank + '</strong></div>';
+    html += '<div class="metric">' + reg.obj_name + '</div>';
+    html += '<div class="metric">min_dist: <strong>' + reg.min_dist.toFixed(1) + ' \u00c5</strong></div>';
+    html += '<div class="metric">Classification: ' + reg.classification + '</div>';
+    html += '<div class="metric">Orientation: ' + reg.orientation + '</div>';
+    html += '<div class="metric">Positions: ' + reg.start_pos + '\u2013' + reg.end_pos + '</div>';
+    document.getElementById('results-summary').innerHTML = html;
+}
+
+// ── Chain ID remapping ──────────────────────────────────────────
+function remapChainIds(guestPdb, scaffoldPdb) {
+    // Find chain IDs used in scaffold
+    const usedChains = new Set();
+    for (const line of scaffoldPdb.split('\n')) {
+        if ((line.startsWith('ATOM') || line.startsWith('HETATM')) && line.length > 21) {
+            usedChains.add(line[21]);
+        }
+    }
+    // Find chain IDs used in guest
+    const guestChains = new Set();
+    for (const line of guestPdb.split('\n')) {
+        if ((line.startsWith('ATOM') || line.startsWith('HETATM')) && line.length > 21) {
+            guestChains.add(line[21]);
+        }
+    }
+    // Find clashing chains
+    const clashing = new Set();
+    for (const ch of guestChains) {
+        if (usedChains.has(ch)) clashing.add(ch);
+    }
+    if (clashing.size === 0) return guestPdb;
+    // Build mapping: clashing guest chains -> unused chain IDs
+    const allUsed = new Set([...usedChains, ...guestChains]);
+    const candidates = 'XYZWVUTSRQPONMLKJIHGFDCBAxyzwvutsrqponmlkjihgfdcba0123456789';
+    const mapping = {};
+    let ci = 0;
+    for (const ch of clashing) {
+        while (ci < candidates.length && allUsed.has(candidates[ci])) ci++;
+        if (ci < candidates.length) {
+            mapping[ch] = candidates[ci];
+            allUsed.add(candidates[ci]);
+            ci++;
+        }
+    }
+    // Apply remapping to ATOM/HETATM/TER records
+    const lines = guestPdb.split('\n');
+    const remapped = lines.map(line => {
+        if ((line.startsWith('ATOM') || line.startsWith('HETATM') || line.startsWith('TER')) && line.length > 21) {
+            const ch = line[21];
+            if (mapping[ch]) {
+                return line.substring(0, 21) + mapping[ch] + line.substring(22);
+            }
+        }
+        return line;
+    });
+    return remapped.join('\n');
+}
+
+// ── Utility ─────────────────────────────────────────────────────
+function setStatus(id, msg, type) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = 'status ' + (type || '');
+}
+
+
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  Pyodide Initialization & Python Bridge                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<script>
+// ── Initialize Pyodide and load pipeline module ─────────────────
+let pyodide = null;
+
+async function initPyodide() {
+    document.querySelector('#loading-overlay .msg').textContent = 'Loading Pyodide runtime...';
+    pyodide = await loadPyodide();
+
+    document.querySelector('#loading-overlay .msg').textContent = 'Installing NumPy & SciPy...';
+    await pyodide.loadPackage(['numpy', 'scipy']);
+
+    document.querySelector('#loading-overlay .msg').textContent = 'Loading pipeline module...';
+    // Fetch pipeline.py and write to Pyodide virtual filesystem
+    const pipelineCode = await fetch('./pipeline.py').then(r => r.text());
+    pyodide.FS.writeFile('/home/pyodide/pipeline.py', pipelineCode);
+
+    // Define the bridge functions in Python
+    await pyodide.runPythonAsync(`
+import json
+import sys
+sys.path.insert(0, '/home/pyodide')
+import pipeline
+
+def _call_validate(pdb_string, prot_chains_json, dna1_chain, dna1_lo, dna1_hi,
+                   dna2_chain, dna2_lo, dna2_hi):
+    prot_chains = json.loads(prot_chains_json)
+    ok, msg, info = pipeline.validate_guest_selection(
+        pdb_string, prot_chains, dna1_chain, int(dna1_lo), int(dna1_hi),
+        dna2_chain, int(dna2_lo), int(dna2_hi))
+    return json.dumps({'ok': ok, 'message': msg})
+
+def _call_step_a(pdb_string, prot_chains_json, dna1_chain, dna1_lo, dna1_hi,
+                 dna2_chain, dna2_lo, dna2_hi, hetatm):
+    prot_chains = json.loads(prot_chains_json)
+    return pipeline.step_A_process_guest(
+        pdb_string, prot_chains, dna1_chain, int(dna1_lo), int(dna1_hi),
+        dna2_chain, int(dna2_lo), int(dna2_hi), hetatm=bool(hetatm))
+
+def _call_pipeline(guest_pdb_str, scaffold_json_str, scaffold_pdb_str,
+                   mates_json_str, bot_pdb_str, top_pdb_str):
+    scaffold_json = json.loads(scaffold_json_str)
+    mates_json = json.loads(mates_json_str)
+
+    # Step B: Find registers
+    b_result = pipeline.step_B_find_registers(
+        guest_pdb_str, scaffold_pdb_str, scaffold_json,
+        mates_json=mates_json, bot_pdb_str=bot_pdb_str, top_pdb_str=top_pdb_str)
+
+    # Step D: Categorize
+    d_result = pipeline.step_D_categorize(
+        b_result, scaffold_pdb_str, scaffold_json,
+        mates_json=mates_json)
+
+    # Step E: Rank
+    e_result = pipeline.step_E_rank(
+        d_result, scaffold_pdb_str, scaffold_json,
+        guest_pdb_str, mates_json=mates_json)
+
+    # Step F: SVG diagram
+    svg = pipeline.step_F_diagram_svg(e_result, scaffold_json, d_result)
+
+    register_pdbs = b_result.get('register_pdbs', {})
+    ranked = e_result['ranked']
+    ranked_clean = []
+    for r in ranked:
+        rc = {k: v for k, v in r.items()
+              if k not in ('pdb_string', 'neighbors', 'closest_dists')}
+        ranked_clean.append(rc)
+
+    return json.dumps({
+        'ranked': ranked_clean,
+        'register_pdbs': register_pdbs,
+        'svg': svg,
+    })
+`);
+
+    // Create JS-callable proxies
+    window.pyValidate = pyodide.globals.get('_call_validate');
+    window.pyStepA = pyodide.globals.get('_call_step_a');
+    window.pyPipeline = pyodide.globals.get('_call_pipeline');
+
+    document.getElementById('loading-overlay').classList.add('hidden');
+    console.log('Pyodide + pipeline ready');
+}
+
+// Boot: init viewers + scaffold data + Pyodide in parallel
+async function bootAll() {
+    await Promise.all([
+        initViewers(),
+        fetchScaffoldData('9YZJ'),
+        fetchScaffoldData('9YZK'),
+        initPyodide(),
+    ]);
+}
+bootAll();
+</script>
+
+</body>
+</html>

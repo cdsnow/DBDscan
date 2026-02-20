@@ -42,7 +42,7 @@ python E_rank_registers.py $GUEST $SCAFFOLD
 echo ""
 echo "Step F: Register diagram"
 echo "------------------------------------------------------------"
-python F_register_diagram.py $GUEST $SCAFFOLD
+python F2_sidebyside_register_diagram.py $GUEST $SCAFFOLD
 
 echo ""
 echo "============================================================"

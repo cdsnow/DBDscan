@@ -3,9 +3,6 @@ output/
 processed_guest_models/
 symmetry_mates/
 
-# Unrelated website
-website/
-
 # Python
 __pycache__/
 *.pyc

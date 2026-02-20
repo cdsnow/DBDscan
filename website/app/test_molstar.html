@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mol* Viewer API Test</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/molstar@4.5.0/build/viewer/molstar.css">
+<script src="https://cdn.jsdelivr.net/npm/molstar@4.5.0/build/viewer/molstar.js"></script>
+<style>
+body { font-family: sans-serif; background: #1a1a2e; color: #e0e0e0; margin: 1rem; }
+#viewer { width: 600px; height: 400px; border: 1px solid #444; }
+.controls { margin: 1rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+button { background: #0077aa; color: #fff; border: none; border-radius: 4px; padding: 0.4rem 0.8rem; cursor: pointer; }
+button:hover { background: #00d4ff; color: #000; }
+#log { background: #111; padding: 0.5rem; font-family: monospace; font-size: 0.8rem; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h2>Mol* Viewer API Test</h2>
+<div id="viewer"></div>
+
+<div class="controls">
+    <button onclick="loadPdb('1jgg')">Load 1JGG</button>
+    <button onclick="loadPdb('9yzj')">Load 9YZJ</button>
+    <button onclick="loadFromFile()">Load from file</button>
+    <button onclick="clearViewer()">Clear</button>
+</div>
+
+<h3>Quick Styles</h3>
+<div class="controls">
+    <button onclick="tryStyle('default')">Default</button>
+    <button onclick="tryStyle('stylized')">Stylized</button>
+    <button onclick="tryStyle('illustrative')">Illustrative</button>
+    <button onclick="tryStyle('outlineOnly')">Outline Only</button>
+    <button onclick="tryStyle('occlusionOnly')">Occlusion Only</button>
+</div>
+
+<h3>Components</h3>
+<div class="controls">
+    <button onclick="hideWater()">Hide Water</button>
+    <button onclick="showWater()">Show Water</button>
+    <button onclick="listComponents()">List Components</button>
+</div>
+
+<h3>Raw setProps Tests</h3>
+<div class="controls">
+    <button onclick="testOutline()">Toggle Outline</button>
+    <button onclick="testOcclusion()">Toggle Occlusion</button>
+    <button onclick="dumpProps()">Dump Canvas3D Props</button>
+</div>
+
+<input type="file" id="fileInput" accept=".pdb" style="display:none">
+<div id="log"></div>
+
+<script>
+let viewer = null;
+
+function log(msg) {
+    const el = document.getElementById('log');
+    el.textContent += new Date().toLocaleTimeString() + ' ' + msg + '\n';
+    el.scrollTop = el.scrollHeight;
+}
+
+async function init() {
+    log('Creating viewer...');
+    viewer = await molstar.Viewer.create('viewer', {
+        layoutIsExpanded: false,
+        layoutShowControls: true,
+        layoutShowRemoteState: false,
+        layoutShowSequence: true,
+        layoutShowLog: false,
+    });
+    log('Viewer created. Methods: ' + Object.getOwnPropertyNames(Object.getPrototypeOf(viewer)).join(', '));
+    log('plugin type: ' + typeof viewer.plugin);
+    log('canvas3d type: ' + typeof viewer.plugin?.canvas3d);
+}
+
+async function loadPdb(code) {
+    log(`Loading ${code}...`);
+    try {
+        await viewer.loadPdb(code);
+        log(`Loaded ${code} OK`);
+    } catch(e) {
+        log(`Error: ${e.message}`);
+    }
+}
+
+function loadFromFile() {
+    document.getElementById('fileInput').click();
+}
+
+document.getElementById('fileInput').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    log(`Loading file ${file.name} (${text.length} chars)...`);
+    try {
+        await viewer.plugin.clear();
+        await viewer.loadStructureFromData(text, 'pdb', { dataLabel: file.name });
+        log('Loaded from file OK');
+    } catch(e) {
+        log(`Error: ${e.message}`);
+    }
+});
+
+async function clearViewer() {
+    log('Clearing...');
+    await viewer.plugin.clear();
+    log('Cleared');
+}
+
+function tryStyle(name) {
+    log(`Applying style: ${name}`);
+    const plugin = viewer.plugin;
+    const c3d = plugin.canvas3d;
+    if (!c3d) { log('No canvas3d!'); return; }
+
+    try {
+        if (name === 'default') {
+            // Part 1: reset ignoreLight
+            plugin.managers.structure.component.setOptions({
+                ...plugin.managers.structure.component.state.options,
+                ignoreLight: false,
+            });
+            // Part 2: disable postprocessing
+            c3d.setProps({
+                postprocessing: {
+                    outline: { name: 'off', params: {} },
+                    occlusion: { name: 'off', params: {} },
+                    shadow: { name: 'off', params: {} },
+                }
+            });
+        } else if (name === 'stylized') {
+            // Part 1: set ignoreLight (flat/unlit shading)
+            plugin.managers.structure.component.setOptions({
+                ...plugin.managers.structure.component.state.options,
+                ignoreLight: true,
+            });
+            // Part 2: enable outline + occlusion
+            const pp = c3d.props.postprocessing;
+            c3d.setProps({
+                postprocessing: {
+                    outline: {
+                        name: 'on',
+                        params: pp.outline.name === 'on' ? pp.outline.params : {
+                            scale: 1, color: 0x000000, threshold: 0.33, includeTransparent: true,
+                        }
+                    },
+                    occlusion: {
+                        name: 'on',
+                        params: pp.occlusion.name === 'on' ? pp.occlusion.params : {
+                            multiScale: { name: 'off', params: {} },
+                            radius: 5, bias: 0.8, blurKernelSize: 15, blurDepthBias: 0.5,
+                            samples: 32, resolutionScale: 1, color: 0x000000,
+                        }
+                    },
+                    shadow: { name: 'off', params: {} },
+                }
+            });
+        } else if (name === 'illustrative') {
+            plugin.managers.structure.component.setOptions({
+                ...plugin.managers.structure.component.state.options,
+                ignoreLight: true,
+            });
+            c3d.setProps({
+                postprocessing: {
+                    outline: { name: 'on', params: { scale: 2, threshold: 0.33, color: 0x000000, includeTransparent: true } },
+                    occlusion: { name: 'on', params: {
+                        multiScale: { name: 'off', params: {} },
+                        radius: 5, bias: 0.8, blurKernelSize: 15, blurDepthBias: 0.5,
+                        samples: 32, resolutionScale: 1, color: 0x000000,
+                    }},
+                    shadow: { name: 'off', params: {} },
+                }
+            });
+        } else if (name === 'outlineOnly') {
+            plugin.managers.structure.component.setOptions({
+                ...plugin.managers.structure.component.state.options,
+                ignoreLight: true,
+            });
+            c3d.setProps({
+                postprocessing: {
+                    outline: { name: 'on', params: { scale: 1, threshold: 0.33, color: 0x000000, includeTransparent: true } },
+                    occlusion: { name: 'off', params: {} },
+                    shadow: { name: 'off', params: {} },
+                }
+            });
+        } else if (name === 'occlusionOnly') {
+            c3d.setProps({
+                postprocessing: {
+                    outline: { name: 'off', params: {} },
+                    occlusion: { name: 'on', params: {
+                        multiScale: { name: 'off', params: {} },
+                        radius: 5, bias: 0.8, blurKernelSize: 15, blurDepthBias: 0.5,
+                        samples: 32, resolutionScale: 1, color: 0x000000,
+                    }},
+                    shadow: { name: 'off', params: {} },
+                }
+            });
+        }
+        log(`Style ${name} applied OK`);
+    } catch(e) {
+        log(`Error applying style: ${e.message}`);
+        console.error(e);
+    }
+}
+
+function testOutline() {
+    const c3d = viewer.plugin.canvas3d;
+    if (!c3d) return;
+    const current = c3d.props.postprocessing?.outline?.name;
+    log(`Current outline: ${JSON.stringify(current)}`);
+    const newVal = current === 'on' ? 'off' : 'on';
+    try {
+        c3d.setProps({ postprocessing: { outline: { name: newVal, params: newVal === 'on' ? { scale: 1, threshold: 0.33, color: 0x000000 } : {} } } });
+        log(`Outline toggled to ${newVal}`);
+    } catch(e) { log(`Error: ${e.message}`); console.error(e); }
+}
+
+function testOcclusion() {
+    const c3d = viewer.plugin.canvas3d;
+    if (!c3d) return;
+    const current = c3d.props.postprocessing?.occlusion?.name;
+    log(`Current occlusion: ${JSON.stringify(current)}`);
+    const newVal = current === 'on' ? 'off' : 'on';
+    try {
+        c3d.setProps({ postprocessing: { occlusion: { name: newVal, params: newVal === 'on' ? { samples: 32, radius: 10, bias: 0.8, blurKernelSize: 4, color: 0x000000, intensity: 1.0 } : {} } } });
+        log(`Occlusion toggled to ${newVal}`);
+    } catch(e) { log(`Error: ${e.message}`); console.error(e); }
+}
+
+function dumpProps() {
+    const c3d = viewer.plugin.canvas3d;
+    if (!c3d) { log('No canvas3d!'); return; }
+    const pp = c3d.props.postprocessing;
+    log('postprocessing: ' + JSON.stringify(pp, null, 2));
+}
+
+function getWaterComponents() {
+    const hm = viewer.plugin.managers.structure.hierarchy;
+    const water = [];
+    for (const struct of hm.current.structures) {
+        for (const comp of struct.components) {
+            if (comp.key === 'structure-component-static-water') {
+                water.push(comp);
+            }
+        }
+    }
+    return water;
+}
+
+function hideWater() {
+    const comps = getWaterComponents();
+    if (comps.length === 0) { log('No water component found'); return; }
+    viewer.plugin.managers.structure.hierarchy.toggleVisibility(comps, 'hide');
+    log('Water hidden (' + comps.length + ' component(s))');
+}
+
+function showWater() {
+    const comps = getWaterComponents();
+    if (comps.length === 0) { log('No water component found'); return; }
+    viewer.plugin.managers.structure.hierarchy.toggleVisibility(comps, 'show');
+    log('Water shown (' + comps.length + ' component(s))');
+}
+
+function listComponents() {
+    const hm = viewer.plugin.managers.structure.hierarchy;
+    for (const struct of hm.current.structures) {
+        log('Structure: ' + (struct.model?.label || '(unknown)'));
+        for (const comp of struct.components) {
+            const hidden = comp.cell?.state?.isHidden;
+            log('  component key=' + comp.key + ' hidden=' + hidden);
+        }
+    }
+}
+
+init().then(() => loadPdb('1jgg').then(() => {
+    hideWater();
+    tryStyle('stylized');
+}));
+</script>
+</body>
+</html>
